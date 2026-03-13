@@ -6,7 +6,19 @@
 <title>数心乱戦 — オンラインカードゲーム</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Zen+Old+Mincho:wght@400;700&display=swap" rel="stylesheet">
-<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js">
+function openRuleModal(){
+  document.getElementById('rule-modal').style.display='block';
+  document.body.style.overflow='hidden';
+}
+function closeRuleModal(){
+  document.getElementById('rule-modal').style.display='none';
+  document.body.style.overflow='';
+}
+function closeRule(e){
+  if(e.target.classList.contains('modal-overlay'))closeRuleModal();
+}
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -125,18 +137,108 @@ input[type=text]:focus{border-color:var(--gold)}
 .log-row{display:flex;justify-content:space-between;align-items:center;padding:3px 8px;font-size:11px;border-radius:4px;margin-bottom:2px}
 .log-row:nth-child(odd){background:var(--surface)}
 .log-round{color:var(--muted)}.log-res.win{color:var(--green)}.log-res.lose{color:var(--vermillion)}.log-res.draw{color:var(--muted)}
+
+/* ─── Rule modal ─── */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,18,8,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fadeIn .2s ease}
+.modal{background:var(--washi);border-radius:14px;width:100%;max-width:480px;max-height:85vh;overflow-y:auto;border:1px solid var(--border)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--washi);z-index:1}
+.modal-title{font-family:'Zen Old Mincho',serif;font-size:20px;letter-spacing:4px}
+.modal-close{width:32px;height:32px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s}
+.modal-close:hover{background:var(--surface)}
+.modal-body{padding:1.25rem}
+.rule-section{margin-bottom:1.2rem}
+.rule-section-title{font-size:11px;color:var(--gold);letter-spacing:2px;border-left:3px solid var(--gold);padding-left:8px;margin-bottom:.7rem}
+.rule-text{font-size:13px;line-height:1.9;color:var(--ink)}
+.rule-example{display:flex;align-items:center;gap:8px;margin:.5rem 0}
+.rule-card{width:38px;height:54px;border-radius:6px;border:2px solid;display:flex;align-items:center;justify-content:center;font-family:'Zen Old Mincho',serif;font-size:18px;font-weight:700}
+.rule-card.red{border-color:var(--vermillion);color:var(--vermillion);background:var(--red-bg)}
+.rule-card.blue{border-color:var(--cobalt);color:var(--cobalt);background:var(--blue-bg)}
+.rule-vs{font-size:11px;color:var(--muted)}
+.rule-result{font-size:12px;padding:3px 10px;border-radius:4px}
+.rule-result.win{background:#e8f5ec;color:var(--green);border:1px solid var(--green)}
+.rule-result.draw{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.rule-flow{display:flex;flex-direction:column;gap:6px}
+.rule-step{display:flex;gap:10px;align-items:flex-start}
+.rule-step-num{width:22px;height:22px;border-radius:50%;background:var(--ink);color:var(--washi);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.rule-step-text{font-size:13px;line-height:1.7}
+.card-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:.4rem}
+.card-table td{padding:4px 8px;border:1px solid var(--border)}
+.card-table tr:nth-child(even){background:var(--surface)}
+.rule-btn{display:inline-block;padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;font-family:'Noto Serif JP',serif;font-size:12px;color:var(--muted);letter-spacing:1px;transition:all .2s}
+.rule-btn:hover{background:var(--surface);color:var(--ink)}
 </style>
 </head>
 <body>
 <div id="app"></div>
 <div id="toast"></div>
+<div id="rule-modal" style="display:none">
+<div class="modal-overlay" onclick="closeRule(event)">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header">
+    <div class="modal-title">ルール</div>
+    <button class="modal-close" onclick="closeRuleModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div class="rule-section">
+      <div class="rule-section-title">基本情報</div>
+      <table class="card-table">
+        <tr><td style="color:var(--muted)">プレイ人数</td><td>2人</td></tr>
+        <tr><td style="color:var(--muted)">手札</td><td>1〜9のカード各1枚（計9枚）</td></tr>
+        <tr><td style="color:var(--muted)">勝利条件</td><td>先に5勝したプレイヤーの勝ち</td></tr>
+      </table>
+    </div>
+    <div class="rule-section">
+      <div class="rule-section-title">カードの色</div>
+      <p class="rule-text">奇数（1,3,5,7,9）＝ 赤カード<br>偶数（2,4,6,8）＝ 青カード<br>相手には<strong>色の残り枚数だけ</strong>が見えます。数字は非公開です。</p>
+    </div>
+    <div class="rule-section">
+      <div class="rule-section-title">勝敗ルール</div>
+      <p class="rule-text" style="margin-bottom:.5rem">基本：数字が大きい方が勝ち</p>
+      <div class="rule-example">
+        <div class="rule-card blue">8</div>
+        <span class="rule-vs">vs</span>
+        <div class="rule-card red">5</div>
+        <div class="rule-result win">8の勝ち</div>
+      </div>
+      <p class="rule-text" style="margin:.6rem 0 .5rem">特別ルール：1は9に勝つ</p>
+      <div class="rule-example">
+        <div class="rule-card red">1</div>
+        <span class="rule-vs">vs</span>
+        <div class="rule-card red">9</div>
+        <div class="rule-result win">1の勝ち</div>
+      </div>
+      <p class="rule-text" style="margin:.6rem 0 .5rem">同じ数字は引き分け（勝利数は増えない）</p>
+      <div class="rule-example">
+        <div class="rule-card blue">4</div>
+        <span class="rule-vs">vs</span>
+        <div class="rule-card blue">4</div>
+        <div class="rule-result draw">DRAW</div>
+      </div>
+    </div>
+    <div class="rule-section">
+      <div class="rule-section-title">ゲームの流れ</div>
+      <div class="rule-flow">
+        <div class="rule-step"><div class="rule-step-num">1</div><div class="rule-step-text">手札からカードを1枚選ぶ</div></div>
+        <div class="rule-step"><div class="rule-step-num">2</div><div class="rule-step-text">お互い裏向きで同時に出す</div></div>
+        <div class="rule-step"><div class="rule-step-num">3</div><div class="rule-step-text">勝敗判定（WIN / LOSE / DRAW）</div></div>
+        <div class="rule-step"><div class="rule-step-num">4</div><div class="rule-step-text">出したカードの数字は非公開のまま</div></div>
+      </div>
+    </div>
+    <div class="rule-section">
+      <div class="rule-section-title">戦略のヒント</div>
+      <p class="rule-text">相手の色の残り枚数と過去の勝敗から、相手の手を推理しましょう。1は最弱ですが、9だけに勝てる唯一のカードです。</p>
+    </div>
+  </div>
+</div>
+</div>
+</div>
 
 <script>
 // ══════════════════════════════════════════════
 // CONFIG — ここにSupabaseの情報を入力してください
 // ══════════════════════════════════════════════
-let SUPABASE_URL = '';
-let SUPABASE_KEY = '';
+let SUPABASE_URL = 'https://csrvewlgyvxjiyazvpdl.supabase.co';
+let SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzcnZld2xneXZ4aml5YXp2cGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjU5MTMsImV4cCI6MjA4OTAwMTkxM30.lJDAS_bQlWyHPDaIR550Y9qPlsNSPVcjCEZJqChDGT8';
 let sbClient = null;
 
 // ══════════════════════════════════════════════
@@ -356,6 +458,9 @@ function renderLobby(){
   return`<div class="screen">
   <div class="game-title">数心乱戦</div>
   <div class="game-sub">— 情報制限カードゲーム —</div>
+  <div style="text-align:center;margin-bottom:1rem">
+    <button class="rule-btn" onclick="openRuleModal()">ルールを確認する</button>
+  </div>
   <div class="panel">
     <div class="panel-title">新規ルームを作成</div>
     <div class="config-row"><label>あなたの名前</label>
@@ -464,7 +569,7 @@ function renderGame(){
       <div class="score-wins">勝利数</div>
     </div>
   </div>
-  <div class="round-badge">第 ${room.round} 回戦　/　先に5勝で勝利</div>
+  <div class="round-badge" style="display:flex;align-items:center;justify-content:center;gap:10px">第 ${room.round} 回戦　/　先に5勝で勝利 <button class="rule-btn" onclick="openRuleModal()" style="font-size:11px;padding:3px 10px">ルール</button></div>
   ${resultHtml}
   <div class="panel" style="margin-bottom:.8rem">
     <div class="panel-title">相手の残りカード</div>
@@ -515,6 +620,8 @@ function saveConfig(){
   SUPABASE_URL=url;SUPABASE_KEY=key;
   try{
     sbClient=window.supabase.createClient(url,key);
+    localStorage.setItem('sb_url',url);
+    localStorage.setItem('sb_key',key);
     toast('接続しました！');
     setState('lobby');
   } catch(e){toast('設定が正しくありません');console.error(e);}
@@ -552,6 +659,13 @@ window.addEventListener('load',()=>{
     document.getElementById('app').innerHTML='<div style="text-align:center;padding:3rem;font-family:serif;color:#b5291e">Supabaseライブラリの読み込みに失敗しました。<br>インターネット接続を確認してページを再読み込みしてください。</div>';
     return;
   }
+  const savedUrl=localStorage.getItem('sb_url')||SUPABASE_URL;
+  const savedKey=localStorage.getItem('sb_key')||SUPABASE_KEY;
+  if(savedUrl&&savedKey){
+    SUPABASE_URL=savedUrl;SUPABASE_KEY=savedKey;
+    sbClient=window.supabase.createClient(savedUrl,savedKey);
+    state.screen='lobby';
+  }
   render();
   // URLにルームIDがあればlobbyで自動入力
   if(roomParam){
@@ -561,6 +675,18 @@ window.addEventListener('load',()=>{
     },100);
   }
 });
+
+function openRuleModal(){
+  document.getElementById('rule-modal').style.display='block';
+  document.body.style.overflow='hidden';
+}
+function closeRuleModal(){
+  document.getElementById('rule-modal').style.display='none';
+  document.body.style.overflow='';
+}
+function closeRule(e){
+  if(e.target.classList.contains('modal-overlay'))closeRuleModal();
+}
 </script>
 </body>
 </html>
