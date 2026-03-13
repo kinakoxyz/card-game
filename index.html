@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数心乱戦 — オンラインカードゲーム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Zen+Old+Mincho:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1208;--washi:#f5f0e8;--light-washi:#faf7f2;
+  --vermillion:#b5291e;--cobalt:#1a3a6b;--gold:#9a7020;
+  --muted:#7a6848;--border:#d4c9a8;--surface:#f0ebe0;
+  --green:#1a6b3a;--red-bg:#fde8e8;--blue-bg:#e8eef8;
+}
+html,body{height:100%;background:var(--washi);color:var(--ink);font-family:'Noto Serif JP',serif}
+
+/* ─── Layout ─── */
+#app{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
+.screen{width:100%;max-width:520px;animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ─── Header ─── */
+.game-title{font-family:'Zen Old Mincho',serif;font-size:36px;letter-spacing:6px;text-align:center;line-height:1.1}
+.game-sub{font-size:12px;color:var(--muted);letter-spacing:3px;text-align:center;margin-top:4px;margin-bottom:2rem}
+.divider{width:80px;height:1px;background:var(--gold);margin:1rem auto}
+
+/* ─── Panels ─── */
+.panel{background:var(--light-washi);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.panel-title{font-size:12px;color:var(--gold);letter-spacing:2px;border-left:3px solid var(--gold);padding-left:8px;margin-bottom:1rem}
+
+/* ─── Inputs & Buttons ─── */
+input[type=text]{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:'Noto Serif JP',serif;font-size:14px;background:var(--washi);color:var(--ink);outline:none;transition:border .2s}
+input[type=text]:focus{border-color:var(--gold)}
+.btn{display:block;width:100%;padding:12px;border:1.5px solid var(--ink);border-radius:8px;font-family:'Zen Old Mincho',serif;font-size:14px;letter-spacing:2px;cursor:pointer;transition:all .2s;text-align:center}
+.btn-primary{background:var(--ink);color:var(--washi)}
+.btn-primary:hover{background:#2e2010}
+.btn-secondary{background:transparent;color:var(--ink)}
+.btn-secondary:hover{background:var(--surface)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-sm{padding:7px 16px;width:auto;font-size:13px;display:inline-block;border-radius:6px}
+.gap{margin-top:.6rem}
+
+/* ─── Config box ─── */
+.config-row{margin-bottom:.8rem}
+.config-row label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:1px}
+
+/* ─── Room ID display ─── */
+.room-box{background:var(--surface);border:1.5px dashed var(--gold);border-radius:8px;padding:1rem;text-align:center;margin-bottom:1rem}
+.room-id{font-family:'Zen Old Mincho',serif;font-size:28px;letter-spacing:8px;color:var(--ink)}
+.room-hint{font-size:12px;color:var(--muted);margin-top:4px}
+.copy-btn{margin-top:.6rem;padding:6px 18px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--washi);cursor:pointer;font-family:'Noto Serif JP',serif;letter-spacing:1px;transition:all .2s}
+.copy-btn:hover{background:var(--surface)}
+.waiting-anim{display:flex;gap:6px;justify-content:center;margin-top:.6rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:pulse 1.4s ease infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{transform:scale(0);opacity:.3}40%{transform:scale(1);opacity:1}}
+
+/* ─── Game Board ─── */
+.score-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border-radius:8px;margin-bottom:1rem;border:1px solid var(--border)}
+.score-side{text-align:center;min-width:80px}
+.score-name{font-size:11px;color:var(--muted);letter-spacing:1px}
+.score-num{font-family:'Zen Old Mincho',serif;font-size:28px;line-height:1}
+.score-wins{font-size:11px;color:var(--muted);margin-top:2px}
+.score-divider{font-size:11px;color:var(--border);letter-spacing:1px}
+.round-badge{text-align:center;font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:.8rem}
+
+/* ─── Opponent info ─── */
+.opp-info{display:flex;gap:8px;justify-content:center;margin-bottom:1rem}
+.color-pill{padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700;letter-spacing:1px}
+.pill-red{background:var(--red-bg);color:var(--vermillion);border:1px solid var(--vermillion)}
+.pill-blue{background:var(--blue-bg);color:var(--cobalt);border:1px solid var(--cobalt)}
+
+/* ─── Hand cards ─── */
+.hand-label{font-size:11px;color:var(--muted);letter-spacing:2px;text-align:center;margin-bottom:.6rem}
+.hand{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:1rem}
+.card{width:56px;height:80px;border-radius:8px;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;background:var(--washi);position:relative;user-select:none}
+.card.red{border-color:var(--vermillion);color:var(--vermillion)}
+.card.blue{border-color:var(--cobalt);color:var(--cobalt)}
+.card .num{font-family:'Zen Old Mincho',serif;font-size:24px;font-weight:700;line-height:1}
+.card .dot{font-size:9px;margin-top:2px;opacity:.7}
+.card:hover:not(.disabled):not(.selected){transform:translateY(-6px);box-shadow:0 8px 20px rgba(0,0,0,.12)}
+.card.selected{transform:translateY(-10px) scale(1.05);box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.card.selected.red{background:var(--red-bg);border-width:2.5px}
+.card.selected.blue{background:var(--blue-bg);border-width:2.5px}
+.card.disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+.card.used{opacity:.2;pointer-events:none}
+
+/* ─── Confirm area ─── */
+.confirm-area{text-align:center;min-height:60px;margin-bottom:.8rem}
+.selected-preview{font-size:13px;color:var(--muted);margin-bottom:.6rem;letter-spacing:1px}
+.waiting-msg{font-size:13px;color:var(--gold);letter-spacing:1px;margin-top:.4rem}
+
+/* ─── Result banner ─── */
+.result-banner{padding:1rem;border-radius:10px;text-align:center;margin-bottom:1rem;animation:fadeIn .3s ease}
+.result-win{background:#e8f5ec;border:1.5px solid var(--green);color:var(--green)}
+.result-lose{background:var(--red-bg);border:1.5px solid var(--vermillion);color:var(--vermillion)}
+.result-draw{background:var(--surface);border:1.5px solid var(--border);color:var(--muted)}
+.result-main{font-family:'Zen Old Mincho',serif;font-size:28px;letter-spacing:4px}
+.result-detail{font-size:12px;margin-top:4px;opacity:.8}
+
+/* ─── Final result ─── */
+.final{text-align:center;padding:2rem 1rem}
+.final-title{font-family:'Zen Old Mincho',serif;font-size:40px;letter-spacing:6px;margin-bottom:.5rem}
+.final-win{color:var(--gold)}.final-lose{color:var(--vermillion)}
+.final-sub{font-size:13px;color:var(--muted);letter-spacing:2px;margin-bottom:2rem}
+.final-scores{display:flex;gap:1.5rem;justify-content:center;margin-bottom:1.5rem}
+.final-score-item{text-align:center}
+.final-score-item .label{font-size:11px;color:var(--muted);letter-spacing:1px}
+.final-score-item .val{font-family:'Zen Old Mincho',serif;font-size:36px}
+
+/* ─── Setup notice ─── */
+.notice{background:#fef9ec;border:1px solid #e8c84a;border-radius:8px;padding:1rem;font-size:12px;color:#7a6020;line-height:1.8;margin-bottom:1rem}
+.notice strong{color:#5a4010}
+.notice code{background:#f5eecc;padding:1px 5px;border-radius:3px;font-size:11px}
+
+/* ─── Toast ─── */
+#toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--washi);padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ─── History log ─── */
+.log{max-height:90px;overflow-y:auto;margin-bottom:.8rem}
+.log-row{display:flex;justify-content:space-between;align-items:center;padding:3px 8px;font-size:11px;border-radius:4px;margin-bottom:2px}
+.log-row:nth-child(odd){background:var(--surface)}
+.log-round{color:var(--muted)}.log-res.win{color:var(--green)}.log-res.lose{color:var(--vermillion)}.log-res.draw{color:var(--muted)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// CONFIG — ここにSupabaseの情報を入力してください
+// ══════════════════════════════════════════════
+let SUPABASE_URL = '';
+let SUPABASE_KEY = '';
+let sbClient = null;
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let state = {
+  screen: 'config',  // config | lobby | waiting | game | result
+  myId: null,
+  playerNum: null,   // 1 or 2
+  roomId: null,
+  roomData: null,
+  selectedCard: null,
+  submitting: false,
+  playerName: '',
+  channel: null,
+};
+
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function genId(len=6){
+  return Math.random().toString(36).slice(2,2+len).toUpperCase();
+}
+function toast(msg,dur=2000){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+function calcWinner(p1,p2){
+  if(p1===p2)return 'draw';
+  if((p1===1&&p2===9)||(p2===1&&p1===9))return p1===1?'p1':'p2';
+  return p1>p2?'p1':'p2';
+}
+function getHand(cards){
+  return [1,2,3,4,5,6,7,8,9].filter(n=>cards.includes(n));
+}
+function colorOf(n){return n%2===1?'red':'blue';}
+
+// ══════════════════════════════════════════════
+// SUPABASE HELPERS
+// ══════════════════════════════════════════════
+async function getRoom(roomId){
+  const {data,error}=await sbClient.from('game_rooms').select('*').eq('room_id',roomId).single();
+  if(error)return null;
+  return data;
+}
+async function updateRoom(roomId,updates){
+  const {error}=await sbClient.from('game_rooms').update(updates).eq('room_id',roomId);
+  return !error;
+}
+
+// ══════════════════════════════════════════════
+// GAME LOGIC
+// ══════════════════════════════════════════════
+async function createRoom(name){
+  const roomId=genId();
+  const myId=genId(8);
+  const allCards=[1,2,3,4,5,6,7,8,9];
+  const {error}=await sbClient.from('game_rooms').insert({
+    room_id:roomId,
+    player1_id:myId,
+    player1_name:name,
+    player2_id:null,
+    player2_name:null,
+    p1_hand:allCards,
+    p2_hand:allCards,
+    p1_pick:null,
+    p2_pick:null,
+    score_p1:0,
+    score_p2:0,
+    round:1,
+    status:'waiting',
+    history:[],
+  });
+  if(error){toast('エラーが発生しました');console.error(error);return;}
+  state.myId=myId;state.roomId=roomId;state.playerNum=1;state.playerName=name;
+  setState('waiting');
+  subscribeRoom(roomId);
+}
+async function joinRoom(roomId,name){
+  const room=await getRoom(roomId);
+  if(!room){toast('ルームが見つかりません');return;}
+  if(room.status!=='waiting'){toast('このルームはすでに満員です');return;}
+  const myId=genId(8);
+  await updateRoom(roomId,{player2_id:myId,player2_name:name,status:'playing'});
+  state.myId=myId;state.roomId=roomId;state.playerNum=2;state.playerName=name;state.roomData=room;
+  setState('game');
+  subscribeRoom(roomId);
+}
+function subscribeRoom(roomId){
+  if(state.channel)state.channel.unsubscribe();
+  state.channel=sbClient.channel('room:'+roomId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'game_rooms',filter:'room_id=eq.'+roomId},
+      payload=>{
+        state.roomData=payload.new;
+        handleRoomUpdate(payload.new);
+      })
+    .subscribe();
+}
+function handleRoomUpdate(room){
+  if(room.status==='playing'&&state.screen==='waiting'){
+    setState('game');return;
+  }
+  if(state.screen==='game'){
+    const me=state.playerNum;
+    const myPick=me===1?room.p1_pick:room.p2_pick;
+    const oppPick=me===1?room.p2_pick:room.p1_pick;
+    if(myPick!==null&&oppPick!==null){
+      // both submitted — resolve
+      resolveRound(room);
+    } else {
+      render();
+    }
+  }
+  if(room.status==='finished'){
+    setState('result');
+  }
+}
+async function submitCard(card){
+  if(state.submitting)return;
+  state.submitting=true;state.selectedCard=null;
+  const field=state.playerNum===1?'p1_pick':'p2_pick';
+  await updateRoom(state.roomId,{[field]:card});
+  state.submitting=false;
+  render();
+}
+async function resolveRound(room){
+  const p1=room.p1_pick,p2=room.p2_pick;
+  const winner=calcWinner(p1,p2);
+  let s1=room.score_p1,s2=room.score_p2;
+  if(winner==='p1')s1++;
+  else if(winner==='p2')s2++;
+  const newP1Hand=room.p1_hand.filter(c=>c!==p1);
+  const newP2Hand=room.p2_hand.filter(c=>c!==p2);
+  const histEntry={round:room.round,p1,p2,winner};
+  const newHist=[...(room.history||[]),histEntry];
+  const finished=s1>=5||s2>=5||newP1Hand.length===0;
+  const updates={
+    p1_hand:newP1Hand,p2_hand:newP2Hand,
+    score_p1:s1,score_p2:s2,
+    p1_pick:null,p2_pick:null,
+    round:room.round+1,
+    history:newHist,
+    status:finished?'finished':'playing',
+    last_result:{p1,p2,winner},
+  };
+  // Only player1 writes the resolution (prevent double-write)
+  if(state.playerNum===1){
+    await updateRoom(state.roomId,updates);
+  }
+}
+async function rematch(){
+  const allCards=[1,2,3,4,5,6,7,8,9];
+  const updates={p1_hand:allCards,p2_hand:allCards,p1_pick:null,p2_pick:null,
+    score_p1:0,score_p2:0,round:1,status:'playing',history:[],last_result:null};
+  await updateRoom(state.roomId,updates);
+  state.screen='game';render();
+}
+
+// ══════════════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════════════
+function setState(s){state.screen=s;render();}
+function render(){
+  const app=document.getElementById('app');
+  switch(state.screen){
+    case 'config':    app.innerHTML=renderConfig();break;
+    case 'lobby':     app.innerHTML=renderLobby();break;
+    case 'waiting':   app.innerHTML=renderWaiting();break;
+    case 'game':      app.innerHTML=renderGame();break;
+    case 'result':    app.innerHTML=renderResult();break;
+  }
+}
+
+function renderConfig(){
+  return`<div class="screen">
+  <div class="game-title">数心乱戦</div>
+  <div class="game-sub">— 情報制限カードゲーム —</div>
+  <div class="notice">
+    <strong>初回セットアップが必要です</strong><br>
+    1. <a href="https://supabase.com" target="_blank">supabase.com</a> で無料プロジェクトを作成<br>
+    2. SQL Editorで下のテーブルを作成<br>
+    3. Project Settings → API から URL と anon key を取得して入力
+    <br><br>
+    <strong>SQL（コピーして実行）：</strong>
+    <br>
+    <code>create table game_rooms (
+  id bigint generated always as identity primary key,
+  room_id text unique not null,
+  player1_id text, player2_id text,
+  player1_name text, player2_name text,
+  p1_hand int[], p2_hand int[],
+  p1_pick int, p2_pick int,
+  score_p1 int default 0, score_p2 int default 0,
+  round int default 1,
+  status text default 'waiting',
+  history jsonb default '[]',
+  last_result jsonb,
+  created_at timestamptz default now()
+);
+alter table game_rooms enable row level security;
+create policy "allow all" on game_rooms for all using (true) with check (true);
+alter publication supabase_realtime add table game_rooms;</code>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Supabase 設定</div>
+    <div class="config-row"><label>Project URL</label>
+    <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" value="${SUPABASE_URL}"></div>
+    <div class="config-row"><label>Anon Key</label>
+    <input type="text" id="sb-key" placeholder="eyJhbGci..." value="${SUPABASE_KEY}"></div>
+    <button class="btn btn-primary gap" onclick="saveConfig()">設定を保存して続ける</button>
+  </div>
+</div>`;
+}
+
+function renderLobby(){
+  return`<div class="screen">
+  <div class="game-title">数心乱戦</div>
+  <div class="game-sub">— 情報制限カードゲーム —</div>
+  <div class="panel">
+    <div class="panel-title">新規ルームを作成</div>
+    <div class="config-row"><label>あなたの名前</label>
+    <input type="text" id="name-create" placeholder="プレイヤー名" maxlength="12"></div>
+    <button class="btn btn-primary gap" onclick="handleCreate()">ルームを作成する</button>
+  </div>
+  <div class="panel">
+    <div class="panel-title">ルームに参加</div>
+    <div class="config-row"><label>あなたの名前</label>
+    <input type="text" id="name-join" placeholder="プレイヤー名" maxlength="12"></div>
+    <div class="config-row"><label>ルームID</label>
+    <input type="text" id="room-input" placeholder="XXXXXX" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:18px;text-align:center;font-family:'Zen Old Mincho',serif"></div>
+    <button class="btn btn-secondary gap" onclick="handleJoin()">参加する</button>
+  </div>
+</div>`;
+}
+
+function renderWaiting(){
+  const url=location.href.split('?')[0]+'?room='+state.roomId;
+  return`<div class="screen">
+  <div class="game-title">数心乱戦</div>
+  <div class="game-sub">— 友達を待っています —</div>
+  <div class="room-box">
+    <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:.4rem">ルームID</div>
+    <div class="room-id">${state.roomId}</div>
+    <div class="room-hint">このIDを友達に教えてください</div>
+    <button class="copy-btn" onclick="copyUrl('${url}')">URLをコピー</button>
+  </div>
+  <div style="text-align:center;color:var(--muted);font-size:13px;letter-spacing:1px">相手の参加を待っています</div>
+  <div class="waiting-anim"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>`;
+}
+
+function renderGame(){
+  const room=state.roomData;
+  if(!room)return'<div class="screen" style="text-align:center;padding:3rem;color:var(--muted)">読み込み中...</div>';
+  const me=state.playerNum;
+  const myHand=me===1?room.p1_hand:room.p2_hand;
+  const oppHand=me===1?room.p2_hand:room.p1_hand;
+  const myScore=me===1?room.score_p1:room.score_p2;
+  const oppScore=me===1?room.score_p2:room.score_p1;
+  const myName=me===1?room.player1_name:room.player2_name;
+  const oppName=me===1?room.player2_name:room.player1_name;
+  const myPick=me===1?room.p1_pick:room.p2_pick;
+  const oppPick=me===1?room.p2_pick:room.p1_pick;
+  const oppRed=(oppHand||[]).filter(n=>n%2===1).length;
+  const oppBlue=(oppHand||[]).filter(n=>n%2===0).length;
+  const hist=room.history||[];
+  const lastResult=room.last_result;
+
+  let resultHtml='';
+  if(lastResult&&hist.length>0){
+    const last=hist[hist.length-1];
+    const iWon=(me===1&&last.winner==='p1')||(me===2&&last.winner==='p2');
+    const isDraw=last.winner==='draw';
+    const cls=isDraw?'result-draw':iWon?'result-win':'result-lose';
+    const label=isDraw?'DRAW':iWon?'WIN':'LOSE';
+    resultHtml=`<div class="result-banner ${cls}">
+      <div class="result-main">${label}</div>
+      <div class="result-detail">第${last.round}回戦</div>
+    </div>`;
+  }
+
+  const histRows=hist.slice().reverse().slice(0,5).map(h=>{
+    const iWon=(me===1&&h.winner==='p1')||(me===2&&h.winner==='p2');
+    const isDraw=h.winner==='draw';
+    const resCls=isDraw?'draw':iWon?'win':'lose';
+    const resLabel=isDraw?'DRAW':iWon?'WIN':'LOSE';
+    return`<div class="log-row"><span class="log-round">第${h.round}回戦</span><span class="log-res ${resCls}">${resLabel}</span></div>`;
+  }).join('');
+
+  const cardItems=(myHand||[]).sort((a,b)=>a-b).map(n=>{
+    const cls=colorOf(n);
+    const isSel=state.selectedCard===n;
+    const isDisabled=myPick!==null||state.submitting;
+    return`<div class="card ${cls}${isSel?' selected':''}${isDisabled?' disabled':''}" onclick="selectCard(${n})">
+      <div class="num">${n}</div><div class="dot">●</div>
+    </div>`;
+  }).join('');
+
+  let confirmHtml='';
+  if(myPick===null){
+    if(state.selectedCard){
+      const c=colorOf(state.selectedCard);
+      confirmHtml=`<div class="selected-preview">選択中：<strong>${state.selectedCard}</strong> (${c==='red'?'赤':'青'})</div>
+      <button class="btn btn-primary btn-sm" onclick="submitCard(${state.selectedCard})">このカードを出す</button>`;
+    } else {
+      confirmHtml=`<div style="font-size:13px;color:var(--muted);letter-spacing:1px">カードを選んでください</div>`;
+    }
+  } else {
+    confirmHtml=`<div style="font-size:13px;color:var(--gold);letter-spacing:1px">カードを出しました</div>
+    <div class="waiting-msg">相手を待っています...</div>`;
+  }
+
+  return`<div class="screen">
+  <div class="score-bar">
+    <div class="score-side">
+      <div class="score-name">${myName||'あなた'}</div>
+      <div class="score-num">${myScore}</div>
+      <div class="score-wins">勝利数</div>
+    </div>
+    <div class="score-divider">VS</div>
+    <div class="score-side">
+      <div class="score-name">${oppName||'相手'}</div>
+      <div class="score-num">${oppScore}</div>
+      <div class="score-wins">勝利数</div>
+    </div>
+  </div>
+  <div class="round-badge">第 ${room.round} 回戦　/　先に5勝で勝利</div>
+  ${resultHtml}
+  <div class="panel" style="margin-bottom:.8rem">
+    <div class="panel-title">相手の残りカード</div>
+    <div class="opp-info">
+      <div class="color-pill pill-red">赤 ${oppRed}</div>
+      <div class="color-pill pill-blue">青 ${oppBlue}</div>
+    </div>
+  </div>
+  ${hist.length>0?`<div class="panel" style="margin-bottom:.8rem"><div class="panel-title">対戦履歴</div><div class="log">${histRows}</div></div>`:''}
+  <div class="panel">
+    <div class="panel-title">あなたの手札</div>
+    <div class="hand">${cardItems}</div>
+    <div class="confirm-area">${confirmHtml}</div>
+  </div>
+</div>`;
+}
+
+function renderResult(){
+  const room=state.roomData;
+  const me=state.playerNum;
+  const myScore=me===1?room.score_p1:room.score_p2;
+  const oppScore=me===1?room.score_p2:room.score_p1;
+  const myName=me===1?room.player1_name:room.player2_name;
+  const oppName=me===1?room.player2_name:room.player1_name;
+  const iWin=myScore>oppScore;
+  return`<div class="screen">
+  <div class="final">
+    <div class="final-title ${iWin?'final-win':'final-lose'}">${iWin?'勝利':'敗北'}</div>
+    <div class="final-sub">${iWin?'見事な読み合いでした':'また挑戦してください'}</div>
+    <div class="final-scores">
+      <div class="final-score-item"><div class="label">${myName||'あなた'}</div><div class="val">${myScore}</div></div>
+      <div style="align-self:center;color:var(--border);font-size:20px">－</div>
+      <div class="final-score-item"><div class="label">${oppName||'相手'}</div><div class="val">${oppScore}</div></div>
+    </div>
+    <button class="btn btn-primary" style="max-width:200px;margin:0 auto .6rem" onclick="rematch()">もう一度対戦</button>
+    <button class="btn btn-secondary" style="max-width:200px;margin:0 auto" onclick="setState('lobby')">ロビーに戻る</button>
+  </div>
+</div>`;
+}
+
+// ══════════════════════════════════════════════
+// HANDLERS
+// ══════════════════════════════════════════════
+function saveConfig(){
+  const url=document.getElementById('sb-url').value.trim();
+  const key=document.getElementById('sb-key').value.trim();
+  if(!url||!key){toast('URLとKeyを入力してください');return;}
+  SUPABASE_URL=url;SUPABASE_KEY=key;
+  try{
+    sbClient=window.supabase.createClient(url,key);
+    localStorage.setItem('sb_url',url);
+    localStorage.setItem('sb_key',key);
+    toast('接続しました！');
+    setState('lobby');
+  } catch(e){toast('設定が正しくありません');console.error(e);}
+}
+function handleCreate(){
+  const name=document.getElementById('name-create').value.trim()||'プレイヤー1';
+  createRoom(name);
+}
+function handleJoin(){
+  const name=document.getElementById('name-join').value.trim()||'プレイヤー2';
+  const rid=document.getElementById('room-input').value.trim().toUpperCase();
+  if(!rid||rid.length!==6){toast('ルームIDを入力してください');return;}
+  joinRoom(rid,name);
+}
+function selectCard(n){
+  if(state.roomData&&(state.playerNum===1?state.roomData.p1_pick:state.roomData.p2_pick)!==null)return;
+  state.selectedCard=state.selectedCard===n?null:n;
+  render();
+}
+function copyUrl(url){
+  navigator.clipboard.writeText(url).then(()=>toast('URLをコピーしました！')).catch(()=>{
+    const el=document.createElement('input');el.value=url;document.body.appendChild(el);
+    el.select();document.execCommand('copy');document.body.removeChild(el);
+    toast('URLをコピーしました！');
+  });
+}
+
+// ══════════════════════════════════════════════
+// INIT — URLパラメータでルーム自動入力
+// ══════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  const params=new URLSearchParams(location.search);
+  const roomParam=params.get('room');
+  if(!window.supabase || !window.supabase.createClient){
+    document.getElementById('app').innerHTML='<div style="text-align:center;padding:3rem;font-family:serif;color:#b5291e">Supabaseライブラリの読み込みに失敗しました。<br>インターネット接続を確認してページを再読み込みしてください。</div>';
+    return;
+  }
+  const savedUrl=localStorage.getItem('sb_url');
+  const savedKey=localStorage.getItem('sb_key');
+  if(savedUrl&&savedKey){
+    SUPABASE_URL=savedUrl;SUPABASE_KEY=savedKey;
+    sbClient=window.supabase.createClient(savedUrl,savedKey);
+    state.screen='lobby';
+  }
+  render();
+  // URLにルームIDがあればlobbyで自動入力
+  if(roomParam){
+    setTimeout(()=>{
+      const el=document.getElementById('room-input');
+      if(el)el.value=roomParam.toUpperCase();
+    },100);
+  }
+});
+</script>
+</body>
+</html>
