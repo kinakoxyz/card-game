@@ -135,8 +135,8 @@ input[type=text]:focus{border-color:var(--gold)}
 // ══════════════════════════════════════════════
 // CONFIG — ここにSupabaseの情報を入力してください
 // ══════════════════════════════════════════════
-let SUPABASE_URL = 'https://csrvewlgyvxjiyazvpdl.supabase.co';
-let SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzcnZld2xneXZ4aml5YXp2cGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjU5MTMsImV4cCI6MjA4OTAwMTkxM30.lJDAS_bQlWyHPDaIR550Y9qPlsNSPVcjCEZJqChDGT8';
+let SUPABASE_URL = '';
+let SUPABASE_KEY = '';
 let sbClient = null;
 
 // ══════════════════════════════════════════════
@@ -515,8 +515,6 @@ function saveConfig(){
   SUPABASE_URL=url;SUPABASE_KEY=key;
   try{
     sbClient=window.supabase.createClient(url,key);
-    localStorage.setItem('sb_url',url);
-    localStorage.setItem('sb_key',key);
     toast('接続しました！');
     setState('lobby');
   } catch(e){toast('設定が正しくありません');console.error(e);}
@@ -553,13 +551,6 @@ window.addEventListener('load',()=>{
   if(!window.supabase || !window.supabase.createClient){
     document.getElementById('app').innerHTML='<div style="text-align:center;padding:3rem;font-family:serif;color:#b5291e">Supabaseライブラリの読み込みに失敗しました。<br>インターネット接続を確認してページを再読み込みしてください。</div>';
     return;
-  }
-  const savedUrl=localStorage.getItem('sb_url')||SUPABASE_URL;
-  const savedKey=localStorage.getItem('sb_key')||SUPABASE_KEY;
-  if(savedUrl&&savedKey){
-    SUPABASE_URL=savedUrl;SUPABASE_KEY=savedKey;
-    sbClient=window.supabase.createClient(savedUrl,savedKey);
-    state.screen='lobby';
   }
   render();
   // URLにルームIDがあればlobbyで自動入力
