@@ -303,7 +303,7 @@ async function createRoom(name,opts){
   });
   if(error){toast('エラーが発生しました');console.error(error);return;}
   state.myId=myId;state.roomId=roomId;state.playerNum=1;state.playerName=name;
-  setState('waiting');subscribeRoom(roomId);
+  setState('waiting');subscribeRoom(roomId);startPolling(roomId);
 }
 
 async function joinRoom(roomId,name){
@@ -325,7 +325,9 @@ function subscribeRoom(roomId){
 }
 
 function handleRoomUpdate(room){
-  if(room.status==='playing'&&state.screen==='waiting'){state.roomData=room;setState('game');return;}
+  if(room.status==='playing'&&(state.screen==='waiting'||state.screen==='lobby')){
+    state.roomData=room;setState('game');return;
+  }
   if(state.screen==='game'){
     const me=state.playerNum;
     const myPick=me===1?room.p1_pick:room.p2_pick;
@@ -334,6 +336,24 @@ function handleRoomUpdate(room){
     else{render();}
   }
   if(room.status==='finished'){clearTimer();setState('result');}
+}
+
+// Polling fallback for creator whose realtime might miss the first update
+let pollInterval=null;
+function startPolling(roomId){
+  stopPolling();
+  pollInterval=setInterval(async()=>{
+    if(state.screen!=='waiting')return stopPolling();
+    const room=await getRoom(roomId);
+    if(!room)return;
+    if(room.status==='playing'){
+      stopPolling();
+      state.roomData=room;setState('game');
+    }
+  },2000);
+}
+function stopPolling(){
+  if(pollInterval){clearInterval(pollInterval);pollInterval=null;}
 }
 
 async function submitCard(card){
@@ -498,7 +518,10 @@ function closeRestrictModal(){document.getElementById('restrict-modal').style.di
 function confirmRestrict(color){state.pendingRestrictColor=color;closeRestrictModal();render();}
 
 // Render
-function setState(s){state.screen=s;render();}
+function setState(s){
+  if(s==='game'||s==='lobby')stopPolling();
+  state.screen=s;render();
+}
 function render(){
   const app=document.getElementById('app');
   switch(state.screen){
@@ -628,7 +651,21 @@ function renderGame(){
     const iWon=(me===1&&h.winner==='p1')||(me===2&&h.winner==='p2');
     const isDraw=h.winner==='draw';
     const resCls=isDraw?'draw':iWon?'win':'lose';
-    return`<div class="log-row"><span class="log-round">第${h.round}回戦</span><span class="log-res ${resCls}">${isDraw?'DRAW':iWon?'WIN':'LOSE'}</span></div>`;
+    const myCard=me===1?h.p1:h.p2;
+    const oppCard=me===1?h.p2:h.p1;
+    const myColorCls=colorOf(myCard)==='red'?'pill-red':'pill-blue';
+    const oppColorCls=colorOf(oppCard)==='red'?'pill-red':'pill-blue';
+    const myColorLabel=colorOf(myCard)==='red'?'赤':'青';
+    const oppColorLabel=colorOf(oppCard)==='red'?'赤':'青';
+    return`<div class="log-row" style="justify-content:space-between;align-items:center">
+      <span class="log-round" style="min-width:52px">第${h.round}回戦</span>
+      <span style="display:flex;gap:4px;align-items:center">
+        <span class="color-pill ${myColorCls}" style="font-size:10px;padding:1px 7px">${myColorLabel}</span>
+        <span style="font-size:10px;color:var(--muted)">vs</span>
+        <span class="color-pill ${oppColorCls}" style="font-size:10px;padding:1px 7px">${oppColorLabel}</span>
+      </span>
+      <span class="log-res ${resCls}" style="min-width:36px;text-align:right">${isDraw?'DRAW':iWon?'WIN':'LOSE'}</span>
+    </div>`;
   }).join('');
 
   // Cards
