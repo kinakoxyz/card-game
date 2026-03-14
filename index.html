@@ -487,8 +487,11 @@ function renderWaiting(){
   <div class="room-box">
     <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:.4rem">ルームID</div>
     <div class="room-id">${state.roomId}</div>
-    <div class="room-hint">このIDを友達に教えてください</div>
-    <button class="copy-btn" onclick="copyUrl('${url}')">URLをコピー</button>
+    <div class="room-hint">友達にIDかURLを共有してください</div>
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:.6rem">
+      <button class="copy-btn" onclick="copyText('${state.roomId}')">IDをコピー</button>
+      <button class="copy-btn" onclick="copyUrl('${url}')" style="background:var(--ink);color:var(--washi);border-color:var(--ink)">URLをコピー</button>
+    </div>
   </div>
   <div style="text-align:center;color:var(--muted);font-size:13px;letter-spacing:1px">相手の参加を待っています</div>
   <div class="waiting-anim"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
@@ -680,6 +683,13 @@ function copyUrl(url){
     toast('URLをコピーしました！');
   });
 }
+function copyText(text){
+  navigator.clipboard.writeText(text).then(()=>toast('IDをコピーしました！')).catch(()=>{
+    const el=document.createElement('input');el.value=text;document.body.appendChild(el);
+    el.select();document.execCommand('copy');document.body.removeChild(el);
+    toast('IDをコピーしました！');
+  });
+}
 
 // ══════════════════════════════════════════════
 // INIT — URLパラメータでルーム自動入力
@@ -699,12 +709,16 @@ window.addEventListener('load',()=>{
     state.screen='lobby';
   }
   render();
-  // URLにルームIDがあればlobbyで自動入力
+  // URLにルームIDがあれば名前入力ダイアログを出して自動参加
   if(roomParam){
     setTimeout(()=>{
       const el=document.getElementById('room-input');
       if(el)el.value=roomParam.toUpperCase();
-    },100);
+      // 参加フォームが見えるようにスクロール
+      const joinPanel=document.querySelector('#app .panel:last-child');
+      if(joinPanel)joinPanel.scrollIntoView({behavior:'smooth'});
+      toast('ルームID「'+roomParam.toUpperCase()+'」が入力されました。名前を入力して参加してください！',3000);
+    },300);
   }
 });
 
