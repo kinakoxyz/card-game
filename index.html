@@ -300,6 +300,9 @@ async function createRoom(name,opts){
     opt_reveal:opts.reveal,opt_timelimit:opts.timelimit,opt_restrict:opts.restrict,
     p1_ability_used:false,p2_ability_used:false,
     restrict_target:null,restrict_by:null,
+    next_restrict_target:null,next_restrict_by:null,
+    p1_reveal_done:false,p2_reveal_done:false,
+    reveal_history:[],
   });
   if(error){toast('エラーが発生しました');console.error(error);return;}
   state.myId=myId;state.roomId=roomId;state.playerNum=1;state.playerName=name;
@@ -328,14 +331,18 @@ function handleRoomUpdate(room){
   if(room.status==='playing'&&(state.screen==='waiting'||state.screen==='lobby')){
     state.roomData=room;setState('game');return;
   }
-  if(state.screen==='game'){
+  if(room.status==='reveal'&&state.screen==='game'){
+    state.roomData=room;clearTimer();render();startRevealTimer();return;
+  }
+  if(room.status==='playing'&&state.screen==='game'){
     const me=state.playerNum;
     const myPick=me===1?room.p1_pick:room.p2_pick;
     const oppPick=me===1?room.p2_pick:room.p1_pick;
     if(myPick!==null&&oppPick!==null){resolveRound(room);}
     else{render();}
+    return;
   }
-  if(room.status==='finished'){clearTimer();setState('result');}
+  if(room.status==='finished'){clearTimer();stopRevealTimer();setState('result');}
 }
 
 // Polling fallback for creator whose realtime might miss the first update
@@ -372,14 +379,15 @@ async function submitCard(card){
   state.submitting=true;state.selectedCard=null;clearTimer();
   const field=me===1?'p1_pick':'p2_pick';
   const updates={[field]:card};
-  // Apply pending color restriction
+  // Store pending color restriction for NEXT round (not current)
   if(state.pendingRestrictColor&&room.opt_restrict){
     const oppHand=me===1?room.p2_hand:room.p1_hand;
     const otherColor=state.pendingRestrictColor==='red'?'blue':'red';
     const hasOther=oppHand.some(n=>colorOf(n)===otherColor);
     if(hasOther){
-      updates.restrict_target=state.pendingRestrictColor;
-      updates.restrict_by=me;
+      // Store as "next_restrict" — will be applied in resolveRound for next round
+      updates.next_restrict_target=state.pendingRestrictColor;
+      updates.next_restrict_by=me;
       const usedField=me===1?'p1_ability_used':'p2_ability_used';
       updates[usedField]=true;
       toast(`色制限発動！相手は次のラウンドで${state.pendingRestrictColor==='red'?'赤（奇数）':'青（偶数）'}を出せません`,3000);
@@ -413,19 +421,27 @@ async function resolveRound(room){
   const histEntry={round:room.round,p1,p2,winner};
   const newHist=[...(room.history||[]),histEntry];
   const finished=s1>=5||s2>=5||newP1Hand.length===0;
-  // restrict carries over to next round for opponent
-  // but we clear it after 1 round (it was set this round, applies next round)
-  // Actually: restrict_target was set THIS round → applies NEXT round → clear after next round resolves
-  // We set it on submit, resolve clears it (it already "applied" by blocking in submitCard)
+  // After round 5: trigger reveal phase if opt_reveal is ON (even if restrict was used)
+  const isRound5=room.round===5;
+  const nextStatus=finished?'finished':(isRound5&&room.opt_reveal)?'reveal':'playing';
+  // next_restrict → restrict_target for next round
+  const nextRestrict=room.next_restrict_target||null;
+  const nextRestrictBy=room.next_restrict_by||null;
   await updateRoom(state.roomId,{
     p1_hand:newP1Hand,p2_hand:newP2Hand,
     score_p1:s1,score_p2:s2,
     p1_pick:null,p2_pick:null,
     round:room.round+1,
     history:newHist,
-    status:finished?'finished':'playing',
+    status:nextStatus,
     last_result:{p1,p2,winner},
-    restrict_target:null,restrict_by:null,
+    restrict_target:nextRestrict,
+    restrict_by:nextRestrictBy,
+    next_restrict_target:null,
+    next_restrict_by:null,
+    p1_reveal_done:false,
+    p2_reveal_done:false,
+    reveal_history:[...(room.reveal_history||[])],
   });
 }
 
@@ -437,6 +453,12 @@ async function rematch(){
     history:[],last_result:null,
     p1_ability_used:false,p2_ability_used:false,
     restrict_target:null,restrict_by:null,
+    next_restrict_target:null,next_restrict_by:null,
+    p1_reveal_done:false,p2_reveal_done:false,
+    reveal_history:[],
+    next_restrict_target:null,next_restrict_by:null,
+    p1_reveal_done:false,p2_reveal_done:false,
+    reveal_history:[],
   });
   state.pendingRestrictColor=null;
   state.screen='game';render();
@@ -469,6 +491,84 @@ function startTimer(){
   },1000);
 }
 function clearTimer(){if(state.timerInterval){clearInterval(state.timerInterval);state.timerInterval=null;}}
+// Reveal phase timer
+let revealTimerInterval=null;
+let revealTimerLeft=null;
+function startRevealTimer(){
+  stopRevealTimer();
+  const room=state.roomData;
+  if(!room)return;
+  const limit=room.opt_timelimit||0;
+  revealTimerLeft=limit>0?limit:999;
+  updateRevealTimerBar();
+  revealTimerInterval=setInterval(async()=>{
+    if(revealTimerLeft<999)revealTimerLeft--;
+    updateRevealTimerBar();
+    if(revealTimerLeft<=0){
+      stopRevealTimer();
+      // Auto-skip reveal for this player
+      const me=state.playerNum;
+      const doneField=me===1?'p1_reveal_done':'p2_reveal_done';
+      const room2=state.roomData;
+      if(room2&&!room2[doneField]){
+        await markRevealDone(true);
+      }
+    }
+  },1000);
+}
+function stopRevealTimer(){
+  if(revealTimerInterval){clearInterval(revealTimerInterval);revealTimerInterval=null;}
+}
+function updateRevealTimerBar(){
+  const bar=document.getElementById('reveal-timer-bar');
+  const num=document.getElementById('reveal-timer-num');
+  if(!bar||!num)return;
+  const room=state.roomData;
+  const total=room?.opt_timelimit||30;
+  if(revealTimerLeft===999){bar.style.width='100%';num.textContent='';return;}
+  bar.style.width=Math.max(0,(revealTimerLeft/total)*100)+'%';
+  bar.className='timer-bar'+(revealTimerLeft<=5?' danger':'');
+  num.textContent=revealTimerLeft+'秒';
+}
+async function markRevealDone(auto=false){
+  const me=state.playerNum;
+  const doneField=me===1?'p1_reveal_done':'p2_reveal_done';
+  stopRevealTimer();
+  await updateRoom(state.roomId,{[doneField]:true});
+  // Check if both done
+  const room=await getRoom(state.roomId);
+  if(room&&room.p1_reveal_done&&room.p2_reveal_done){
+    if(state.playerNum===1){
+      await updateRoom(state.roomId,{status:'playing'});
+    }
+  }
+  state.roomData=room;render();
+}
+async function doRevealRound(round){
+  const room=state.roomData;
+  const me=state.playerNum;
+  const hist=room.history||[];
+  const h=hist.find(x=>x.round===round);
+  if(!h)return;
+  const oppCard=me===1?h.p2:h.p1;
+  const usedField=me===1?'p1_ability_used':'p2_ability_used';
+  const revHist=[...(room.reveal_history||[]),{player:me,round,card:oppCard}];
+  await updateRoom(state.roomId,{[usedField]:true,reveal_history:revHist});
+  const room2=await getRoom(state.roomId);
+  state.roomData=room2;
+  render();
+  // Show reveal result inline
+  const el=document.getElementById('reveal-result');
+  if(el){
+    const cls=colorOf(oppCard);
+    el.innerHTML=`<div style="text-align:center;padding:.8rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);margin:.6rem 0">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">第${round}回戦で相手が出したカード</div>
+      <div class="revealed-card ${cls}" style="width:56px;height:80px;font-size:26px;margin:.4rem auto">${oppCard}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:.4rem">${oppCard}（${cls==='red'?'赤・奇数':'青・偶数'}）</div>
+    </div>`;
+  }
+}
+
 function updateTimerBar(){
   const bar=document.getElementById('timer-bar');
   const num=document.getElementById('timer-num');
@@ -524,6 +624,13 @@ function setState(s){
 }
 function render(){
   const app=document.getElementById('app');
+  const room=state.roomData;
+  // Check if we should show reveal phase
+  if(state.screen==='game'&&room&&room.status==='reveal'){
+    app.innerHTML=renderRevealPhase();
+    if(!revealTimerInterval)startRevealTimer();
+    return;
+  }
   switch(state.screen){
     case 'lobby':   app.innerHTML=renderLobby();break;
     case 'waiting': app.innerHTML=renderWaiting();break;
@@ -534,7 +641,58 @@ function render(){
 function initGameScreen(){
   const room=state.roomData;if(!room)return;
   const me=state.playerNum;
-  if((me===1?room.p1_pick:room.p2_pick)===null)startTimer();
+  const myPick=me===1?room.p1_pick:room.p2_pick;
+  // Only start timer if not already running and pick is null
+  if(myPick===null&&!state.timerInterval)startTimer();
+  // If pick is submitted, clear timer
+  if(myPick!==null)clearTimer();
+}
+
+function renderRevealPhase(){
+  const room=state.roomData;
+  const me=state.playerNum;
+  const myName=me===1?room.player1_name:room.player2_name;
+  const oppName=me===1?room.player2_name:room.player1_name;
+  const myDone=me===1?room.p1_reveal_done:room.p2_reveal_done;
+  const myUsed=me===1?room.p1_ability_used:room.p2_ability_used;
+  const hist=(room.history||[]).slice(0,5);
+  const limit=room.opt_timelimit||0;
+  const timerHtml=limit>0?`<div class="timer-wrap">
+    <div class="timer-bar-bg"><div class="timer-bar" id="reveal-timer-bar" style="width:100%"></div></div>
+    <div class="timer-num" id="reveal-timer-num">${revealTimerLeft||limit}秒</div>
+  </div>`:'';
+
+  // Show reveal_history results
+  const revHist=(room.reveal_history||[]).filter(r=>r.player===me);
+  const revResultHtml=revHist.length>0?revHist.map(r=>{
+    const cls=colorOf(r.card);
+    return`<div style="text-align:center;padding:.8rem;background:var(--surface);border-radius:8px;border:1px solid var(--border);margin:.6rem 0">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">第${r.round}回戦で相手が出したカード</div>
+      <div class="revealed-card ${cls}" style="width:56px;height:80px;font-size:26px;margin:.4rem auto">${r.card}</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:.4rem">${r.card}（${cls==='red'?'赤・奇数':'青・偶数'}）</div>
+    </div>`;
+  }).join(''):'<div id="reveal-result"></div>';
+
+  return`<div class="screen">
+  <div class="game-title" style="font-size:28px">透視フェーズ</div>
+  <div class="game-sub">— 5ラウンド終了 —</div>
+  <div class="panel">
+    <div class="panel-title">相手の過去カードを1枚確認できます</div>
+    ${timerHtml}
+    ${myDone?`<div style="text-align:center;padding:1rem;color:var(--muted);font-size:13px">
+      ${myUsed?'透視完了。相手のターンを待っています...':'スキップしました。相手のターンを待っています...'}</div>
+      ${revResultHtml}`:`
+    ${myUsed?revResultHtml:`
+    <p style="font-size:12px;color:var(--muted);margin-bottom:.8rem">見たいラウンドを選んでください（1回のみ）</p>
+    <div class="round-select-grid">
+      ${hist.map(h=>`<button class="round-select-btn" onclick="doRevealRound(${h.round})">第${h.round}回戦</button>`).join('')}
+    </div>
+    <div id="reveal-result"></div>`}
+    ${!myUsed?'':`<div style="text-align:center;margin-top:.6rem"><button class="btn btn-primary btn-sm" onclick="markRevealDone()">確認して次へ</button></div>`}
+    ${!myUsed?`<div style="text-align:center;margin-top:.8rem"><button class="btn btn-secondary btn-sm" onclick="markRevealDone()">スキップ</button></div>`:''}
+    `}
+  </div>
+</div>`;
 }
 
 function renderLobby(){
@@ -763,14 +921,18 @@ function renderResult(){
   const oppName=me===1?room.player2_name:room.player1_name;
   const iWin=myScore>oppScore;
   const hist=room.history||[];
+  const revHist=room.reveal_history||[];
   const histRows=hist.map(h=>{
     const iWon=(me===1&&h.winner==='p1')||(me===2&&h.winner==='p2');
     const isDraw=h.winner==='draw';
     const resCls=isDraw?'draw':iWon?'win':'lose';
     const myCard=me===1?h.p1:h.p2;
     const oppCard=me===1?h.p2:h.p1;
+    // Check if reveal happened for this round
+    const myReveal=revHist.find(r=>r.player===me&&r.round===h.round);
+    const revealBadge=myReveal?`<span style="font-size:9px;background:#fef9ec;border:1px solid var(--gold);color:var(--gold);border-radius:3px;padding:1px 4px;margin-left:3px">透視</span>`:'';
     return`<tr>
-      <td style="color:var(--muted);text-align:center;padding:4px 6px;font-size:12px">第${h.round}回戦</td>
+      <td style="color:var(--muted);text-align:center;padding:4px 6px;font-size:12px">第${h.round}回戦${revealBadge}</td>
       <td style="text-align:center;font-family:'Zen Old Mincho',serif;font-size:17px;color:${colorOf(myCard)==='red'?'var(--vermillion)':'var(--cobalt)'};padding:4px 10px">${myCard}</td>
       <td style="text-align:center;font-size:11px;color:var(--muted);padding:4px">vs</td>
       <td style="text-align:center;font-family:'Zen Old Mincho',serif;font-size:17px;color:${colorOf(oppCard)==='red'?'var(--vermillion)':'var(--cobalt)'};padding:4px 10px">${oppCard}</td>
