@@ -7,6 +7,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Zen+Old+Mincho:wght@400;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js">
+async function cancelCard(){
+  const field=state.playerNum===1?'p1_pick':'p2_pick';
+  await updateRoom(state.roomId,{[field]:null});
+  state.selectedCard=null;
+  render();
+}
 function openRuleModal(){
   document.getElementById('rule-modal').style.display='block';
   document.body.style.overflow='hidden';
@@ -522,9 +528,19 @@ function renderGame(){
     const isDraw=last.winner==='draw';
     const cls=isDraw?'result-draw':iWon?'result-win':'result-lose';
     const label=isDraw?'DRAW':iWon?'WIN':'LOSE';
+    const myCard=me===1?last.p1:last.p2;
+    const oppCard=me===1?last.p2:last.p1;
+    const myColor=colorOf(myCard)==='red'?'赤（奇数）':'青（偶数）';
+    const oppColor=colorOf(oppCard)==='red'?'赤（奇数）':'青（偶数）';
+    const myColorCls=colorOf(myCard)==='red'?'pill-red':'pill-blue';
+    const oppColorCls=colorOf(oppCard)==='red'?'pill-red':'pill-blue';
     resultHtml=`<div class="result-banner ${cls}">
       <div class="result-main">${label}</div>
       <div class="result-detail">第${last.round}回戦</div>
+      <div style="display:flex;gap:8px;justify-content:center;margin-top:8px;flex-wrap:wrap">
+        <span class="color-pill ${myColorCls}" style="font-size:11px;padding:3px 10px">${myName||'あなた'}：${myColor}</span>
+        <span class="color-pill ${oppColorCls}" style="font-size:11px;padding:3px 10px">${oppName||'相手'}：${oppColor}</span>
+      </div>
     </div>`;
   }
 
@@ -555,8 +571,10 @@ function renderGame(){
       confirmHtml=`<div style="font-size:13px;color:var(--muted);letter-spacing:1px">カードを選んでください</div>`;
     }
   } else {
+    const canCancel=oppPick===null;
     confirmHtml=`<div style="font-size:13px;color:var(--gold);letter-spacing:1px">カードを出しました</div>
-    <div class="waiting-msg">相手を待っています...</div>`;
+    <div class="waiting-msg">相手を待っています...</div>
+    ${canCancel?`<div style="margin-top:.6rem"><button class="btn btn-secondary btn-sm" onclick="cancelCard()">キャンセル</button></div>`:''}`;
   }
 
   return`<div class="screen">
@@ -722,6 +740,12 @@ window.addEventListener('load',()=>{
   }
 });
 
+async function cancelCard(){
+  const field=state.playerNum===1?'p1_pick':'p2_pick';
+  await updateRoom(state.roomId,{[field]:null});
+  state.selectedCard=null;
+  render();
+}
 function openRuleModal(){
   document.getElementById('rule-modal').style.display='block';
   document.body.style.overflow='hidden';
