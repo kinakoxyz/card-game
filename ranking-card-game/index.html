@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎭 MASKMEN</title>
+<link href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #e53935; --red-light: #ffebee; --red-text: #b71c1c;
+    --blue: #1e88e5; --blue-light: #e3f2fd; --blue-text: #0d47a1;
+    --green: #43a047; --green-light: #e8f5e9; --green-text: #1b5e20;
+    --orange: #fb8c00; --orange-light: #fff3e0; --orange-text: #e65100;
+    --purple: #8e24aa; --purple-light: #f3e5f5; --purple-text: #4a148c;
+    --gray: #757575; --gray-light: #f5f5f5; --gray-text: #212121;
+    --bg: #0e0e18;
+    --surface: #1a1a2e;
+    --surface2: #16213e;
+    --border: rgba(255,255,255,0.08);
+    --text: #f0f0f0;
+    --text-muted: #888;
+    --gold: #ffd700;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans JP', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+  h1, .logo { font-family: 'Black Han Sans', sans-serif; }
+
+  /* LAYOUT */
+  #app { min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+  .screen { width: 100%; max-width: 520px; padding: 20px 16px 60px; }
+
+  /* LOGO */
+  .logo-main {
+    font-size: 48px;
+    letter-spacing: 6px;
+    background: linear-gradient(135deg, #ffd700 0%, #ff6b35 50%, #ff3cac 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+  .logo-sub { text-align: center; color: var(--text-muted); font-size: 12px; letter-spacing: 3px; margin-bottom: 32px; }
+
+  /* CARDS */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 12px;
+  }
+  .card-title { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; letter-spacing: 1px; }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 12px 24px;
+    border: none; border-radius: 8px;
+    font-family: 'Noto Sans JP', sans-serif;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: linear-gradient(135deg, #7f77dd, #534ab7); color: #eeedfe; }
+  .btn-primary:hover { background: linear-gradient(135deg, #9990e8, #6560c8); }
+  .btn-danger { background: linear-gradient(135deg, #e53935, #b71c1c); color: #fff; }
+  .btn-danger:hover { background: linear-gradient(135deg, #ef5350, #c62828); }
+  .btn-ghost { background: transparent; color: var(--text-muted); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+  .btn-gold { background: linear-gradient(135deg, #ffd700, #ff8c00); color: #000; }
+  .btn-gold:hover { background: linear-gradient(135deg, #ffe033, #ff9f1c); }
+  .btn-full { width: 100%; margin-bottom: 8px; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* INPUTS */
+  input[type=text] {
+    width: 100%; padding: 12px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'Noto Sans JP', sans-serif; font-size: 14px;
+    outline: none; transition: border-color 0.15s;
+  }
+  input[type=text]:focus { border-color: #7f77dd; }
+  label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; }
+
+  /* MASK CARDS */
+  .mask-card {
+    width: 46px; height: 60px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    user-select: none; position: relative;
+    flex-shrink: 0;
+  }
+  .mask-card:hover { transform: translateY(-4px); }
+  .mask-card.selected {
+    transform: translateY(-10px);
+    border-color: rgba(255,255,255,0.8);
+    box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+  }
+  .mask-card.disabled { opacity: 0.5; cursor: not-allowed; }
+  .mask-card.disabled:hover { transform: none; }
+
+  /* TABLE AREA */
+  .table-area {
+    background: var(--surface2);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    min-height: 100px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 12px;
+    padding: 16px;
+  }
+  .table-cards { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+
+  /* RANKING BAR */
+  .rank-bar {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 4px;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .rank-chip {
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+    letter-spacing: 0.5px;
+  }
+  .rank-arrow { color: var(--text-muted); font-size: 14px; }
+
+  /* PLAYER LIST */
+  .player-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .player-row:last-child { border-bottom: none; }
+  .avatar {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; flex-shrink: 0;
+  }
+  .badge {
+    padding: 2px 8px; border-radius: 20px;
+    font-size: 11px; font-weight: 700;
+  }
+
+  /* SCORE ROW */
+  .score-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 8px 12px; border-radius: 8px; margin-bottom: 4px;
+  }
+  .score-row.winner { background: rgba(255,215,0,0.1); border: 1px solid rgba(255,215,0,0.3); }
+
+  /* HAND GROUP */
+  .hand-group { margin-bottom: 14px; }
+  .hand-group-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+  .hand-cards { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  /* LOG */
+  .log-box {
+    background: var(--surface2); border-radius: 8px;
+    padding: 10px 12px; min-height: 70px;
+  }
+  .log-entry { font-size: 11px; padding: 2px 0; }
+  .log-entry:first-child { color: var(--text); }
+  .log-entry:not(:first-child) { color: var(--text-muted); }
+
+  /* HEADER */
+  .game-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 14px; flex-wrap: wrap; gap: 8px;
+  }
+  .season-badge {
+    font-size: 12px; color: var(--text-muted);
+    background: var(--surface2); padding: 4px 10px; border-radius: 20px;
+  }
+  .player-scores { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pscore {
+    font-size: 11px; padding: 3px 8px; border-radius: 6px;
+    background: var(--surface2);
+  }
+  .pscore.active { background: rgba(127,119,221,0.2); color: #afa9ec; }
+  .pscore.me::after { content: " (あなた)"; opacity: 0.7; }
+
+  /* TURN INDICATOR */
+  .turn-indicator {
+    text-align: center; padding: 8px;
+    font-size: 13px; margin-bottom: 10px;
+    border-radius: 8px;
+  }
+  .turn-indicator.my-turn { background: rgba(127,119,221,0.15); color: #afa9ec; font-weight: 700; }
+  .turn-indicator.other-turn { color: var(--text-muted); }
+
+  /* ACTION BUTTONS */
+  .action-row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .action-row .btn { flex: 1; }
+
+  /* FIREBASE CONFIG NOTICE */
+  .config-box {
+    background: var(--surface2); border: 1px solid rgba(255,215,0,0.3);
+    border-radius: var(--radius); padding: 16px; margin-bottom: 16px;
+    font-size: 12px; line-height: 1.8; color: var(--text-muted);
+  }
+  .config-box code {
+    display: block; background: #0a0a14; padding: 10px 12px;
+    border-radius: 6px; font-family: monospace; font-size: 11px;
+    color: #7f77dd; margin: 8px 0; white-space: pre; overflow-x: auto;
+  }
+
+  /* ROOM CODE */
+  .room-code {
+    font-family: 'Black Han Sans', sans-serif;
+    font-size: 32px; letter-spacing: 8px;
+    color: var(--gold); text-align: center;
+    padding: 12px; background: var(--surface2);
+    border-radius: 8px; margin-bottom: 8px;
+  }
+
+  /* FINISH BADGE */
+  .finish-badge {
+    display: inline-block; font-size: 10px;
+    background: rgba(255,255,255,0.1); padding: 1px 6px;
+    border-radius: 20px; margin-left: 4px;
+  }
+
+  /* SEPARATOR */
+  .sep { height: 1px; background: var(--border); margin: 12px 0; }
+
+  /* SPINNER */
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.2);
+    border-top-color: #7f77dd;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+    margin-right: 6px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+  .rulebook-overlay {
+    position:fixed; top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,0.75); z-index:100;
+    display:flex; align-items:flex-start; justify-content:center;
+    overflow-y:auto; padding:16px;
+  }
+  .rulebook-content {
+    background:var(--surface); border:1px solid var(--border);
+    border-radius:16px; width:100%; max-width:520px;
+    padding:24px 20px; margin:auto;
+    animation:slideUp 0.25s ease;
+  }
+  .rule-section { margin-bottom:20px; }
+  .rule-section h3 { font-size:13px; color:var(--gold); letter-spacing:1px; margin-bottom:10px; border-bottom:1px solid rgba(255,215,0,0.2); padding-bottom:6px; }
+  .rule-row { display:flex; gap:10px; margin-bottom:8px; font-size:13px; line-height:1.6; }
+  .rule-icon { font-size:16px; flex-shrink:0; width:22px; text-align:center; }
+  .rule-table { width:100%; border-collapse:collapse; font-size:12px; margin-top:6px; }
+  .rule-table th { background:rgba(255,255,255,0.05); padding:6px 10px; text-align:left; color:var(--text-muted); font-weight:500; }
+  .rule-table td { padding:6px 10px; border-top:1px solid var(--border); }
+  .rule-tag { display:inline-block; padding:1px 8px; border-radius:20px; font-size:11px; font-weight:700; margin-right:4px; }
+
+  @media (max-width: 400px) {
+    .mask-card { width: 40px; height: 52px; font-size: 18px; }
+    .logo-main { font-size: 36px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, onValue, update, off } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+// ============================================================
+// 🔥 FIREBASE CONFIG — ここにあなたの設定を貼り付けてください
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBz3Gw5nvCo98LxqWJsbnw0DxHefUfD66o",
+  authDomain: "maskmen-xyz.firebaseapp.com",
+  databaseURL: "https://maskmen-xyz-default-rtdb.firebaseio.com",
+  projectId: "maskmen-xyz",
+  storageBucket: "maskmen-xyz.firebasestorage.app",
+  messagingSenderId: "339639890969",
+  appId: "1:339639890969:web:a73c21efd118b50376e688"
+};
+// ============================================================
+
+const COLORS = ["red","blue","green","orange","purple","gray"];
+const COLOR_NAMES = {red:"レッド",blue:"ブルー",green:"グリーン",orange:"オレンジ",purple:"パープル",gray:"グレー"};
+const COLOR_BG = {red:"#e53935",blue:"#1e88e5",green:"#43a047",orange:"#fb8c00",purple:"#8e24aa",gray:"#757575"};
+const MASK = {red:"🟥",blue:"🟦",green:"🟩",orange:"🟧",purple:"🟪",gray:"⬜"};
+
+let app_fb, db;
+let roomRef = null;
+let roomListener = null;
+let myPlayerIndex = -1;
+let myName = "";
+let roomCode = "";
+let selectedCards = [];
+let currentState = null;
+
+function isFirebaseConfigured() {
+  return firebaseConfig.apiKey !== "YOUR_API_KEY";
+}
+
+try {
+  app_fb = initializeApp(firebaseConfig);
+  db = getDatabase(app_fb);
+} catch(e) {}
+
+// ===== UTILS =====
+function shuffle(a) {
+  const b = [...a];
+  for (let i = b.length-1; i > 0; i--) {
+    const j = Math.floor(Math.random()*(i+1));
+    [b[i],b[j]] = [b[j],b[i]];
+  }
+  return b;
+}
+
+function createDeck(n) {
+  const deck = [];
+  const each = Math.ceil(n / COLORS.length);
+  COLORS.forEach(c => { for(let i=0;i<each;i++) deck.push(c); });
+  return shuffle(deck).slice(0, n);
+}
+
+function dealCards(np) {
+  const each = np <= 3 ? 15 : np <= 4 ? 12 : 10;
+  const deck = createDeck(np * each);
+  return Array.from({length: np}, (_, i) => deck.slice(i*each, (i+1)*each));
+}
+
+function deriveRanking(edges) {
+  const map = {};
+  COLORS.forEach(c => map[c] = new Set());
+  (edges||[]).forEach(({w,l}) => { if(map[w]) map[w].add(l); });
+  // 推移閉包
+  let changed = true;
+  while(changed) {
+    changed = false;
+    COLORS.forEach(c => {
+      map[c].forEach(b => {
+        map[b]&&map[b].forEach(t => {
+          if(!map[c].has(t)) { map[c].add(t); changed=true; }
+        });
+      });
+    });
+  }
+  // 一度でも場に出た色だけを対象にする
+  const appeared = new Set();
+  (edges||[]).forEach(({w,l}) => { appeared.add(w); appeared.add(l); });
+  const appearedColors = COLORS.filter(c => appeared.has(c));
+  // 出た色の中で順序が確定しているペアのみでソート
+  const ranked = [...appearedColors].sort((a,b) => {
+    if(map[a].has(b)) return -1;
+    if(map[b].has(a)) return 1;
+    return 0;
+  });
+  // 全色の全ペアが確定しているか
+  let allOrdered = COLORS.length > 0;
+  for(let i=0;i<COLORS.length&&allOrdered;i++)
+    for(let j=i+1;j<COLORS.length&&allOrdered;j++)
+      if(!map[COLORS[i]].has(COLORS[j])&&!map[COLORS[j]].has(COLORS[i])) allOrdered=false;
+  return {ranked, allOrdered, map};
+}
+
+function generateRoomCode() {
+  return Math.random().toString(36).substring(2,8).toUpperCase();
+}
+
+function nextActivePlayer(cur, total, finished) {
+  let next = (cur+1) % total;
+  let t = 0;
+  while(finished.includes(next) && t < total) { next=(next+1)%total; t++; }
+  return next;
+}
+
+function calcScores(scores, order) {
+  const s = [...scores];
+  if(order[0]!==undefined) s[order[0]] += 2;
+  if(order[1]!==undefined) s[order[1]] += 1;
+  if(order[order.length-1]!==undefined) s[order[order.length-1]] -= 1;
+  return s;
+}
+
+// ===== DB HELPERS =====
+async function saveRoom(code, state) {
+  if(!db) return;
+  await set(ref(db, `rooms/${code}`), state);
+}
+
+async function loadRoom(code) {
+  if(!db) return null;
+  const snap = await get(ref(db, `rooms/${code}`));
+  return snap.exists() ? snap.val() : null;
+}
+
+function listenRoom(code, cb) {
+  if(!db) return;
+  if(roomListener) off(ref(db, `rooms/${roomCode}`));
+  roomRef = ref(db, `rooms/${code}`);
+  roomListener = onValue(roomRef, snap => {
+    if(snap.exists()) cb(snap.val());
+  });
+}
+
+// ===== RENDER =====
+const el = document.getElementById("app");
+function r(html) { el.innerHTML = html; }
+
+function h(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+
+// ===== SCREENS =====
+function showSetup() {
+  if(!isFirebaseConfigured()) {
+    r(`
+      <div class="screen">
+        <div class="logo-main">MASKMEN</div>
+        <div class="logo-sub">マスクメン オンライン</div>
+        <div class="config-box">
+          <strong style="color:#ffd700">⚙️ Firebase設定が必要です</strong><br><br>
+          1. <a href="https://console.firebase.google.com" target="_blank" style="color:#7f77dd">console.firebase.google.com</a> でプロジェクト作成<br>
+          2. Realtime Database を有効化（テストモード）<br>
+          3. プロジェクト設定 → マイアプリ → ウェブアプリを追加<br>
+          4. 表示された設定をこのファイルの下記に貼り付け：<br>
+          <code>// 🔥 FIREBASE CONFIG の箇所 (index.html 内)</code>
+          設定後にページをリロードしてください。
+        </div>
+      </div>
+    `);
+    return;
+  }
+  r(`
+    <div class="screen">
+      <div class="logo-main">MASKMEN</div>
+      <div class="logo-sub">マスクメン オンライン</div>
+      <div class="card">
+        <label>あなたの名前</label>
+        <input type="text" id="nameInput" placeholder="例: タロウ" value="${h(myName)}" maxlength="10" style="margin-bottom:16px">
+        <button class="btn btn-primary btn-full" onclick="window._createRoom()">🆕 部屋を作る</button>
+        <button class="btn btn-ghost btn-full" style="margin-top:4px" onclick="window._showRulebook()">📖 ルールを確認する</button>
+        <div style="text-align:center;color:var(--text-muted);font-size:12px;margin:8px 0">または</div>
+        <input type="text" id="roomInput" placeholder="部屋コード (例: AB12CD)" maxlength="6" style="margin-bottom:10px;text-transform:uppercase;letter-spacing:3px;text-align:center">
+        <button class="btn btn-ghost btn-full" onclick="window._joinRoom()">🚪 部屋に入る</button>
+      </div>
+    </div>
+  `);
+}
+
+window._createRoom = async function() {
+  const name = document.getElementById("nameInput")?.value.trim();
+  if(!name) { alert("名前を入力してください"); return; }
+  myName = name;
+  const code = generateRoomCode();
+  roomCode = code;
+  myPlayerIndex = 0;
+  const state = {
+    phase: "waiting",
+    players: [{name}],
+    hands: [],
+    season: 1,
+    scores: [0],
+    table: null,
+    currentPlayer: 0,
+    rankEdges: [],
+    rankFull: false,
+    finishOrder: [],
+    passCount: 0,
+    log: ["部屋を作成しました。友達を招待してください！"],
+    seasonResults: []
+  };
+  await saveRoom(code, state);
+  listenRoom(code, onRoomUpdate);
+  showWaiting(state);
+};
+
+window._joinRoom = async function() {
+  const name = document.getElementById("nameInput")?.value.trim();
+  const code = (document.getElementById("roomInput")?.value||"").trim().toUpperCase();
+  if(!name) { alert("名前を入力してください"); return; }
+  if(!code || code.length !== 6) { alert("部屋コードを入力してください（6文字）"); return; }
+  myName = name;
+  roomCode = code;
+  const state = await loadRoom(code);
+  if(!state) { alert("部屋が見つかりません。コードを確認してください"); return; }
+  if(state.phase === "playing" || state.phase === "seasonEnd") {
+    const idx = state.players.findIndex(p => p.name === name);
+    if(idx === -1) { alert("このゲームはすでに開始しています"); return; }
+    myPlayerIndex = idx;
+    listenRoom(code, onRoomUpdate);
+    renderGame(state);
+    return;
+  }
+  if(state.phase === "ended") { alert("このゲームはすでに終了しています"); return; }
+  myPlayerIndex = state.players.length;
+  state.players.push({name});
+  state.scores.push(0);
+  await saveRoom(code, state);
+  listenRoom(code, onRoomUpdate);
+  showWaiting(state);
+};
+
+function onRoomUpdate(state) {
+  currentState = state;
+  selectedCards = [];
+  if(state.phase === "waiting") { showWaiting(state); return; }
+  if(state.phase === "playing") { renderGame(state); return; }
+  if(state.phase === "seasonEnd") { renderSeasonEnd(state); return; }
+  if(state.phase === "ended") { renderGameEnd(state); return; }
+}
+
+function showWaiting(state) {
+  const isHost = myPlayerIndex === 0;
+  const canStart = state.players.length >= 2;
+  r(`
+    <div class="screen">
+      <div class="logo-main">MASKMEN</div>
+      <div class="card">
+        <div class="card-title">部屋コードを友達に教えよう</div>
+        <div class="room-code">${h(roomCode)}</div>
+        <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:16px">
+          友達にこのコードを伝えて「部屋に入る」から入ってもらおう
+        </p>
+        <div class="sep"></div>
+        <div class="card-title">参加中 ${state.players.length}人</div>
+        ${state.players.map((p,i) => `
+          <div class="player-row">
+            <div class="avatar" style="background:${['#3C3489','#993C1D','#0C447C','#3B6D11','#851F1F','#444441'][i%6]};color:${['#EEEDFE','#FAECE7','#E6F1FB','#EAF3DE','#FCEBEB','#F1EFE8'][i%6]}">${h(p.name[0])}</div>
+            <span style="font-size:14px;flex:1">${h(p.name)}</span>
+            ${i===myPlayerIndex?'<span class="badge" style="background:rgba(127,119,221,0.2);color:#afa9ec">あなた</span>':""}
+            ${i===0?'<span class="badge" style="background:rgba(255,255,255,0.1);color:var(--text-muted)">ホスト</span>':""}
+          </div>
+        `).join("")}
+        <div style="margin-top:16px">
+          ${isHost && canStart ? `<button class="btn btn-gold btn-full" onclick="window._startGame()">▶ ゲーム開始 (${state.players.length}人)</button>` : ""}
+          ${!canStart ? `<p style="text-align:center;font-size:12px;color:var(--text-muted)">あと1人以上の参加を待っています...</p>` : ""}
+          ${!isHost ? `<p style="text-align:center;font-size:12px;color:var(--text-muted)"><span class="spinner"></span>ホストが開始するのを待っています</p>` : ""}
+        </div>
+      </div>
+    </div>
+  `);
+}
+
+window._startGame = async function() {
+  const state = await loadRoom(roomCode);
+  if(!state) return;
+  const np = state.players.length;
+  const hands = dealCards(np);
+  const startPlayer = Math.floor(Math.random() * np);
+  state.phase = "playing";
+  state.hands = hands;
+  state.currentPlayer = startPlayer;
+  state.table = false;
+  state.rankEdges = [];
+  state.rankFull = false;
+  state.finishOrder = [];
+  state.passCount = 0;
+  state.round = 1;
+  state.log = [`${state.players[startPlayer].name} からスタート！`];
+  await saveRoom(roomCode, state);
+};
+
+function renderGame(state) {
+  const cp = state.currentPlayer;
+  const isMyTurn = cp === myPlayerIndex;
+  const myHand = state.hands[myPlayerIndex] || [];
+  const {ranked, allOrdered} = deriveRanking(state.rankEdges||[]);
+  const rankFull = state.rankFull || allOrdered;
+
+  const handGrouped = {};
+  myHand.forEach((c,i) => { if(!handGrouped[c]) handGrouped[c]=[]; handGrouped[c].push(i); });
+  const selSet = new Set(selectedCards.map(x => x.key));
+
+  r(`
+    <div class="screen">
+      <div class="game-header">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-family:'Black Han Sans',sans-serif;font-size:18px;color:var(--gold)">MASKMEN</span>
+          <span class="season-badge">S${state.season}/4</span>
+          <span class="season-badge">R${state.round||1}</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <div class="player-scores">
+            ${state.players.map((p,i) => `
+              <span class="pscore${i===cp?" active":""}${i===myPlayerIndex?" me":""}">
+                ${h(p.name)} ${state.scores[i]}pt${(state.finishOrder||[]).includes(i)?'<span class="finish-badge">✓</span>':""}
+              </span>
+            `).join("")}
+          </div>
+          <button class="btn btn-ghost" style="padding:4px 10px;font-size:11px" onclick="window._showRulebook()">📖 ルール</button>
+        </div>
+      </div>
+
+      <div class="rank-bar" style="flex-direction:column;align-items:flex-start">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+          <span style="font-size:11px;color:var(--text-muted)">${rankFull?"✅":"⚡"}</span>
+        </div>
+        ${(()=>{
+          const edges = state.rankEdges||[];
+          if(edges.length===0) return '<span style="font-size:11px;color:var(--text-muted)">序列未定</span>';
+          const {map: rmap, ranked: rlist} = deriveRanking(edges);
+          // 冗長エッジ除去（推移で導出できるエッジを除く）
+          const directEdges = edges.filter(({w,l})=>
+            !edges.some(e1=> e1.w===w && e1.l!==l && rmap[e1.l]?.has(l))
+          );
+          // 各ノードの直接の子（直接エッジで負けている色）
+          const children = {};
+          const parents = {};
+          directEdges.forEach(({w,l})=>{
+            if(!children[w]) children[w]=[];
+            if(!children[w].includes(l)) children[w].push(l);
+            if(!parents[l]) parents[l]=[];
+            if(!parents[l].includes(w)) parents[l].push(w);
+          });
+          // 出現した全ノード
+          const appeared = new Set();
+          directEdges.forEach(({w,l})=>{ appeared.add(w); appeared.add(l); });
+          // ルートノード（親がいないノード）
+          const roots = [...appeared].filter(c=>!(parents[c]?.length>0));
+          // 各ルートから1本のチェーンを生成（分岐点で複数行に分割）
+          const lines = [];
+          function buildLines(node, chain) {
+            const ch = children[node]||[];
+            if(ch.length===0){
+              lines.push([...chain, node]);
+            } else if(ch.length===1){
+              buildLines(ch[0], [...chain, node]);
+            } else {
+              // 分岐: 各子に対して別の行
+              ch.forEach(child=> buildLines(child, [...chain, node]));
+            }
+          }
+          roots.forEach(r=> buildLines(r,[]));
+          if(lines.length===0) return '<span style="font-size:11px;color:var(--text-muted)">序列未定</span>';
+          return lines.map(line=>
+            '<div style="display:flex;align-items:center;gap:3px;margin-bottom:3px">'+
+            line.map((c,i)=>
+              '<span class="rank-chip" style="background:'+COLOR_BG[c]+'22;color:'+COLOR_BG[c]+';border:1px solid '+COLOR_BG[c]+'44">'+MASK[c]+'</span>'+
+              (i<line.length-1?'<span class="rank-arrow">›</span>':'')
+            ).join('')+
+            '</div>'
+          ).join('');
+        })()}
+      </div>
+
+      <div class="table-area">
+        ${state.table ? `
+          <div style="text-align:center">
+            <div class="table-cards">
+              ${Array(state.table.count).fill(0).map(() => `
+                <div class="mask-card" style="background:${COLOR_BG[state.table.color]}22;border:2px solid ${COLOR_BG[state.table.color]}66">${MASK[state.table.color]}</div>
+              `).join("")}
+            </div>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:8px">
+              ${COLOR_NAMES[state.table.color]} × ${state.table.count}枚
+              ${!rankFull && state.table ? ` → 次は${state.table.count+1}枚` : ""}
+            </p>
+          </div>
+        ` : `<span style="color:var(--text-muted);font-size:13px">場は空</span>`}
+      </div>
+
+      ${state.flowMsg ? (()=>{
+          const parts = String(state.flowMsg).split(':');
+          const endedRound = parts[1]||'?';
+          const nextRound = (parseInt(endedRound)||0)+1;
+          const nextName = h(state.players[cp]?.name||"");
+          return `<div id="flowBanner" style="text-align:center;padding:12px 16px;margin-bottom:8px;background:rgba(255,215,0,0.1);border:1px solid rgba(255,215,0,0.35);border-radius:8px;animation:fadeIn 0.3s ease">
+            <div style="font-size:13px;color:var(--text-muted);margin-bottom:4px">第${endedRound}ラウンド終了</div>
+            <div style="font-size:15px;font-weight:700;color:var(--gold)">${nextName} から第${nextRound}ラウンド開始</div>
+          </div>`;
+        })() : ""}
+      <div class="turn-indicator ${isMyTurn?"my-turn":"other-turn"}">
+        ${isMyTurn ? "▶ あなたのターンです" : `${h(state.players[cp]?.name||"")} のターン...`}
+      </div>
+
+      <div class="card" style="min-height:100px">
+        <div class="card-title">あなたの手札 (${myHand.length}枚)</div>
+        ${Object.keys(handGrouped).length === 0
+          ? `<p style="color:var(--text-muted);font-size:13px">手札なし</p>`
+          : Object.entries(handGrouped).map(([color, idxs]) => `
+            <div class="hand-group">
+              <div class="hand-group-label">
+                <span style="color:${COLOR_BG[color]}">${MASK[color]}</span>
+                ${COLOR_NAMES[color]} (${idxs.length})
+              </div>
+              <div class="hand-cards">
+                ${idxs.map(oi => {
+                  const key = `${color}-${oi}`;
+                  const sel = selSet.has(key);
+                  const disabled = !isMyTurn;
+                  return `<div class="mask-card${sel?" selected":""}${disabled?" disabled":""}"
+                    style="background:${COLOR_BG[color]}${sel?"33":"22"};border:2px solid ${COLOR_BG[color]}${sel?"":"44"}"
+                    onclick="window._toggleCard('${color}',${oi})">${MASK[color]}</div>`;
+                }).join("")}
+              </div>
+            </div>
+          `).join("")
+        }
+      </div>
+
+      ${isMyTurn && !(state.finishOrder||[]).includes(myPlayerIndex) ? `
+        <div class="action-row">
+          <button class="btn btn-danger" onclick="window._doPass()">パス</button>
+          <button class="btn btn-primary" id="playBtn" onclick="window._doPlay()" ${selectedCards.length===0?"disabled":""}>
+            ${selectedCards.length>0 ? `${COLOR_NAMES[selectedCards[0]?.card]||""} ${selectedCards.length}枚を出す` : "カードを選択"}
+          </button>
+        </div>
+      ` : `
+        <p style="text-align:center;font-size:12px;color:var(--text-muted);margin-bottom:12px">
+          <span class="spinner"></span>他のプレイヤーのターンを待っています
+        </p>
+      `}
+
+      <div class="log-box">
+        ${(state.log||[]).slice(0,5).map((l,i) => `<div class="log-entry">${h(l)}</div>`).join("")}
+      </div>
+    </div>
+  `);
+}
+
+window._toggleCard = function(color, idx) {
+  const key = `${color}-${idx}`;
+  const pos = selectedCards.findIndex(c => c.key === key);
+  if(pos >= 0) selectedCards.splice(pos, 1);
+  else selectedCards.push({card: color, idx, key});
+
+  const selSet = new Set(selectedCards.map(x => x.key));
+  document.querySelectorAll(".mask-card").forEach(el => {
+    const onclick = el.getAttribute("onclick")||"";
+    const m = onclick.match(/_toggleCard\('(\w+)',(\d+)\)/);
+    if(m) {
+      const k = `${m[1]}-${m[2]}`;
+      const color = m[1];
+      el.classList.toggle("selected", selSet.has(k));
+      el.style.borderColor = selSet.has(k) ? COLOR_BG[color] : `${COLOR_BG[color]}44`;
+    }
+  });
+  const btn = document.getElementById("playBtn");
+  if(btn) {
+    btn.disabled = selectedCards.length === 0;
+    btn.textContent = selectedCards.length > 0
+      ? `${COLOR_NAMES[selectedCards[0]?.card]||""} ${selectedCards.length}枚を出す`
+      : "カードを選択";
+  }
+};
+
+window._doPlay = async function() {
+  if(selectedCards.length === 0) return;
+  const state = await loadRoom(roomCode);
+  if(!state || state.currentPlayer !== myPlayerIndex) return;
+  state.flowMsg = false;
+
+  const colors = selectedCards.map(c => c.card);
+  const unique = [...new Set(colors)];
+  if(unique.length !== 1) { alert("同じ色のカードのみ出せます"); return; }
+  const playedColor = unique[0];
+  const count = colors.length;
+
+  const {ranked, allOrdered} = deriveRanking(state.rankEdges||[]);
+  const rankFull = state.rankFull || allOrdered;
+
+  const {map: rankMap} = deriveRanking(state.rankEdges||[]);
+  // 序列確定済みの色かどうか
+  const isRanked = (color) => {
+    const edges = state.rankEdges||[];
+    return edges.some(e => e.w===color || e.l===color);
+  };
+
+  if(!state.table) {
+    // 場が空の時
+    if(!isRanked(playedColor)) {
+      // 未登場の色 → 必ず1枚
+      if(count !== 1) { alert("未登場の色は1枚だけ出せます"); return; }
+    } else {
+      // 登場済み・序列確定の色 → 1〜3枚
+      if(count < 1 || count > 3) { alert("序列確定の色は1〜3枚で出せます"); return; }
+    }
+  } else {
+    // 場にカードがある時
+    if(playedColor === state.table.color) { alert("前と同じ色は出せません"); return; }
+
+    const tableColorRanked = isRanked(state.table.color);
+    const playColorRanked = isRanked(playedColor);
+    const isStronger = rankMap[playedColor]?.has(state.table.color);
+    const isWeaker = rankMap[state.table.color]?.has(playedColor);
+
+    if(isWeaker) { alert("序列で負けている色は出せません"); return; }
+
+    if(isStronger) {
+      // 序列で上位が確定している色 → 同じ枚数
+      if(count !== state.table.count) { alert(`序列上位の色は${state.table.count}枚出してください`); return; }
+    } else {
+      // 序列未確定の色 → +1枚（最大3枚）
+      const required = state.table.count + 1;
+      if(required > 3) { alert("これ以上枚数を増やせません（最大3枚）"); return; }
+      if(count !== required) { alert(`${required}枚出してください`); return; }
+    }
+    if(count > 3) { alert("最大3枚まで出せます"); return; }
+  }
+
+  const newHand = [...state.hands[myPlayerIndex]];
+  selectedCards.map(c => c.idx).sort((a,b) => b-a).forEach(i => newHand.splice(i,1));
+  state.hands[myPlayerIndex] = newHand;
+
+  let newEdges = [...(state.rankEdges||[])];
+  let log = [...(state.log||[])];
+  let newTable = state.table;
+  let newRankFull = state.rankFull;
+
+  if(!rankFull && state.table) {
+    newEdges.push({w: playedColor, l: state.table.color});
+    const {allOrdered: ao} = deriveRanking(newEdges);
+    newRankFull = ao;
+    log.unshift(`${state.players[myPlayerIndex].name}: ${COLOR_NAMES[playedColor]} > ${COLOR_NAMES[state.table.color]}`);
+    if(ao) log.unshift("🏆 序列確定！バトルフェーズへ");
+  } else {
+    log.unshift(`${state.players[myPlayerIndex].name}: ${COLOR_NAMES[playedColor]} ${count}枚`);
+  }
+
+  const {ranked: nr} = deriveRanking(newEdges);
+  // 流れる条件: 3枚出した かつ 序列確定済みの上位色ではない かつ 新たに序列が統合・確定しなかった
+  const playedIsStronger = rankMap[playedColor]?.has(state.table?.color);
+  // 出す前と後の序列エッジ数を比較して「新たな統合が起きたか」を判定
+  const edgesBefore = (state.rankEdges||[]).length;
+  const edgesAfter = newEdges.length;
+  const rankingMerged = edgesAfter > edgesBefore; // 新しいエッジが追加された = 序列が更新された
+  const shouldFlow = state.table && count >= 3 && !playedIsStronger && !rankingMerged;
+
+  if(!state.table) {
+    // 場が空から出す場合、実際の枚数を記録
+    newTable = {color: playedColor, count, playerIndex: myPlayerIndex};
+  } else if(shouldFlow) {
+    newTable = false;
+    state.passCount = 0;
+    state.lastPlayer = myPlayerIndex;
+    const endRound = state.round || 1;
+    state.round = endRound + 1;
+    state.flowMsg = `round:${endRound}:${myPlayerIndex}`;
+    log.unshift(`第${endRound}ラウンド終了`);
+  } else {
+    newTable = {color: playedColor, count, playerIndex: myPlayerIndex};
+  }
+
+  state.rankEdges = newEdges;
+  state.rankFull = newRankFull;
+  state.table = newTable;
+  state.log = log.slice(0, 20);
+
+  const newFinish = [...(state.finishOrder||[])];
+  if(newHand.length === 0 && !newFinish.includes(myPlayerIndex)) {
+    newFinish.push(myPlayerIndex);
+    state.log.unshift(`🎉 ${state.players[myPlayerIndex].name} が上がり！ ${newFinish.length}位`);
+  }
+  state.finishOrder = newFinish;
+
+  const activePlayers = state.players.length - newFinish.length;
+  if(activePlayers <= 1) {
+    const last = Array.from({length: state.players.length},(_,i)=>i).find(i => !newFinish.includes(i));
+    if(last !== undefined) newFinish.push(last);
+    state.finishOrder = newFinish;
+    state.scores = calcScores(state.scores, newFinish);
+    state.seasonResults = [...(state.seasonResults||[]), {season: state.season, order: newFinish}];
+    // 2人プレイ: 3シーズン勝利で終了、それ以外: 4シーズンで終了
+    const seasonWins = {};
+    (state.seasonResults||[]).forEach(r => { const w=r.order[0]; seasonWins[w]=(seasonWins[w]||0)+1; });
+    const twoPlayer = state.players.length === 2;
+    const someoneWon3 = twoPlayer && Object.values(seasonWins).some(w => w >= 3);
+    state.phase = (someoneWon3 || state.season >= 4) ? "ended" : "seasonEnd";
+    await saveRoom(roomCode, state);
+    selectedCards = [];
+    return;
+  }
+
+  // 流れた直後はlastPlayerから、それ以外は通常の次のプレイヤー
+  if(!state.table && state.lastPlayer !== undefined && state.lastPlayer !== false) {
+    state.currentPlayer = state.lastPlayer;
+    state.lastPlayer = false;
+  } else {
+    state.currentPlayer = nextActivePlayer(state.currentPlayer, state.players.length, newFinish);
+  }
+  await saveRoom(roomCode, state);
+  selectedCards = [];
+};
+
+window._doPass = async function() {
+  const state = await loadRoom(roomCode);
+  if(!state || state.currentPlayer !== myPlayerIndex) return;
+
+  state.passCount = (state.passCount||0) + 1;
+  const active = state.players.length - (state.finishOrder||[]).length;
+  const log = [...(state.log||[])];
+  log.unshift(`${state.players[myPlayerIndex].name}: パス`);
+
+  if(state.passCount >= active - 1) {
+    const lastOut = state.table?.playerIndex ?? state.currentPlayer;
+    state.table = false;
+    state.passCount = 0;
+    log.unshift("全員パス、流れた");
+    const endRound2 = state.round || 1;
+    state.round = endRound2 + 1;
+    state.flowMsg = `round:${endRound2}:${lastOut}`;
+    state.log = log.slice(0, 20);
+    state.currentPlayer = lastOut;
+  } else {
+    state.log = log.slice(0, 20);
+    state.currentPlayer = nextActivePlayer(state.currentPlayer, state.players.length, state.finishOrder||[]);
+  }
+  await saveRoom(roomCode, state);
+  selectedCards = [];
+};
+
+function renderSeasonEnd(state) {
+  const order = state.finishOrder || [];
+  const {ranked} = deriveRanking(state.rankEdges||[]);
+  r(`
+    <div class="screen">
+      <div class="logo-main" style="font-size:32px;margin-bottom:4px">シーズン${state.season}</div>
+      <div class="logo-sub">終了</div>
+      <div class="card">
+        <div class="card-title">順位</div>
+        ${order.map((pi, rank) => `
+          <div class="score-row">
+            <span>${rank===0?"🥇":rank===1?"🥈":rank===order.length-1?"💀":"　"} ${h(state.players[pi].name)}</span>
+            <span style="font-weight:700;color:${rank===0?"#43a047":rank===order.length-1?"#e53935":"var(--text-muted)"}">
+              ${rank===0?"+2":rank===1?"+1":rank===order.length-1?"-1":""}
+            </span>
+          </div>
+        `).join("")}
+      </div>
+      <div class="card">
+        <div class="card-title">確定した序列</div>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:4px">
+          ${ranked.map((c,i) => `
+            <span class="rank-chip" style="background:${COLOR_BG[c]}22;color:${COLOR_BG[c]};border:1px solid ${COLOR_BG[c]}44">${MASK[c]} ${COLOR_NAMES[c]}</span>
+            ${i<ranked.length-1?'<span class="rank-arrow">›</span>':""}
+          `).join("")}
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">累計スコア</div>
+        ${state.players.map((p,i) => `
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:14px">
+            <span>${h(p.name)}</span>
+            <span style="font-weight:700">${state.scores[i]}pt</span>
+          </div>
+        `).join("")}
+      </div>
+      ${myPlayerIndex === 0
+        ? `<button class="btn btn-gold btn-full" onclick="window._nextSeason()">▶ シーズン${state.season+1}へ</button>`
+        : `<p style="text-align:center;font-size:12px;color:var(--text-muted)"><span class="spinner"></span>ホストが次へ進めるのを待っています</p>`
+      }
+    </div>
+  `);
+}
+
+window._nextSeason = async function() {
+  const state = await loadRoom(roomCode);
+  if(!state) return;
+  const np = state.players.length;
+  const hands = dealCards(np);
+  const startPlayer2 = Math.floor(Math.random() * np);
+  state.phase = "playing";
+  state.season += 1;
+  state.hands = hands;
+  state.currentPlayer = startPlayer2;
+  state.table = false;
+  state.rankEdges = [];
+  state.rankFull = false;
+  state.finishOrder = [];
+  state.passCount = 0;
+  state.round = 1;
+  state.log = [`シーズン${state.season}開始！${state.players[startPlayer2].name} からスタート！`];
+  await saveRoom(roomCode, state);
+};
+
+function renderGameEnd(state) {
+  const winner = state.scores.indexOf(Math.max(...state.scores));
+  r(`
+    <div class="screen">
+      <div class="logo-main">GAME END</div>
+      <div class="logo-sub">4シーズン終了</div>
+      <div class="card">
+        <div class="card-title">最終結果</div>
+        ${state.players.map((p,i) => `
+          <div class="score-row${i===winner?" winner":""}">
+            <span>${i===winner?"👑 ":""}${h(p.name)}</span>
+            <span style="font-size:20px;font-weight:700;color:${i===winner?"var(--gold)":"var(--text)"}">${state.scores[i]}pt</span>
+          </div>
+        `).join("")}
+        <p style="text-align:center;font-size:16px;font-weight:700;color:var(--gold);margin-top:16px">
+          🏆 ${h(state.players[winner].name)} の勝利！
+        </p>
+      </div>
+      <button class="btn btn-primary btn-full" onclick="location.reload()">もう一度</button>
+    </div>
+  `);
+}
+
+// ===== RULEBOOK =====
+window._showRulebook = function() {
+  const overlay = document.createElement('div');
+  overlay.className = 'rulebook-overlay';
+  overlay.onclick = (e) => { if(e.target===overlay) overlay.remove(); };
+  overlay.innerHTML = `
+    <div class="rulebook-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+        <span style="font-family:'Black Han Sans',sans-serif;font-size:22px;color:var(--gold)">MASKMEN ルールブック</span>
+        <button class="btn btn-ghost" style="padding:4px 12px;font-size:13px" onclick="this.closest('.rulebook-overlay').remove()">✕ 閉じる</button>
+      </div>
+
+      <div class="rule-section">
+        <h3>🎯 ゲームの目的</h3>
+        <div class="rule-row"><span class="rule-icon">🏆</span><span>4シーズンを戦い、最も得点が多いプレイヤーの勝利。手札を早く出し切ることを目指す。</span></div>
+        <div class="rule-row"><span class="rule-icon">👥</span><span>2〜6人プレイ対応。2人プレイのみ先に3シーズン勝利した方が勝ち。</span></div>
+      </div>
+
+      <div class="rule-section">
+        <h3>🃏 カード配布枚数</h3>
+        <table class="rule-table">
+          <tr><th>人数</th><th>1人あたりの枚数</th></tr>
+          <tr><td>2〜3人</td><td>15枚</td></tr>
+          <tr><td>4人</td><td>12枚</td></tr>
+          <tr><td>5〜6人</td><td>10枚</td></tr>
+        </table>
+        <div class="rule-row" style="margin-top:8px"><span class="rule-icon">🎨</span><span>カードは6色（赤・青・緑・オレンジ・紫・灰）各10枚。シャッフルして配る。</span></div>
+      </div>
+
+      <div class="rule-section">
+        <h3>⚡ 序列について</h3>
+        <div class="rule-row"><span class="rule-icon">❓</span><span>ゲーム開始時、6色のレスラーの強さ（序列）はすべて未確定。</span></div>
+        <div class="rule-row"><span class="rule-icon">📈</span><span>カードを出すことで序列が決まっていく。上に乗せたカードの色が「強い」と確定する。</span></div>
+        <div class="rule-row"><span class="rule-icon">🔗</span><span>序列は推移する。赤＞青、青＞白なら自動的に赤＞白も確定。</span></div>
+        <div class="rule-row"><span class="rule-icon">🌿</span><span>分岐もあり得る。赤＞青＞白、紫＞青＞白のように複数の色が同じ色より強いことも。</span></div>
+        <div class="rule-row"><span class="rule-icon">🔄</span><span>序列はシーズンごとにリセットされる。</span></div>
+      </div>
+
+      <div class="rule-section">
+        <h3>🎮 カードの出し方</h3>
+        <div class="rule-row"><span class="rule-icon">1️⃣</span><span><strong>場が空の時（ラウンド開始）</strong></span></div>
+        <table class="rule-table" style="margin-bottom:10px">
+          <tr><th>状態</th><th>出せる枚数</th></tr>
+          <tr><td>未登場の色（序列未確定）</td><td>1枚のみ</td></tr>
+          <tr><td>登場済み・序列確定の色</td><td>1〜3枚自由</td></tr>
+        </table>
+        <div class="rule-row"><span class="rule-icon">2️⃣</span><span><strong>場にカードがある時</strong></span></div>
+        <table class="rule-table">
+          <tr><th>出したい色の状態</th><th>枚数ルール</th><th>効果</th></tr>
+          <tr><td>序列で上位確定</td><td>同じ枚数（最大3枚）</td><td>序列変化なし</td></tr>
+          <tr><td>序列未確定</td><td>+1枚（最大3枚）</td><td>上位に確定・即流れ</td></tr>
+          <tr><td>序列で下位確定</td><td>出せない</td><td>—</td></tr>
+        </table>
+      </div>
+
+      <div class="rule-section">
+        <h3>🌊 流れる条件</h3>
+        <div class="rule-row"><span class="rule-icon">💥</span><span>序列未確定の色を+1枚で<strong>3枚</strong>出した時 → 即流れる<br><span style="font-size:11px;color:#888">ただし、その3枚を出すことで新たな序列が確定・統合された場合は流れない（次の人が応戦できる）</span></span></div>
+        <div class="rule-row"><span class="rule-icon">🙅</span><span>1人を残して全員パス → 流れる</span></div>
+        <div class="rule-row"><span class="rule-icon">▶️</span><span>流れた後は、最後にカードを出したプレイヤーから新しいラウンド開始。</span></div>
+      </div>
+
+      <div class="rule-section">
+        <h3>🏅 得点</h3>
+        <table class="rule-table">
+          <tr><th>順位</th><th>得点</th></tr>
+          <tr><td>🥇 1位（最初に上がり）</td><td style="color:#43a047;font-weight:700">+2点</td></tr>
+          <tr><td>🥈 2位</td><td style="color:#1e88e5;font-weight:700">+1点</td></tr>
+          <tr><td>💀 最下位</td><td style="color:#e53935;font-weight:700">−1点</td></tr>
+          <tr><td>その他</td><td>0点</td></tr>
+        </table>
+        <div class="rule-row" style="margin-top:8px"><span class="rule-icon">🔁</span><span>次のシーズンは前シーズン最下位のプレイヤーからスタート（ランダム）。</span></div>
+      </div>
+
+      <div class="rule-section">
+        <h3>🚫 パス（ギブアップ）</h3>
+        <div class="rule-row"><span class="rule-icon">✋</span><span>出せるカードがない、または戦略的に出したくない時にパスを宣言できる。</span></div>
+        <div class="rule-row"><span class="rule-icon">⚠️</span><span>パスしたプレイヤーはそのラウンド中はカードを出せない。</span></div>
+      </div>
+
+      <button class="btn btn-primary btn-full" style="margin-top:8px" onclick="this.closest('.rulebook-overlay').remove()">✕ 閉じる</button>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+};
+
+// ===== INIT =====
+showSetup();
+</script>
+</body>
+</html>
