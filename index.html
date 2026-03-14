@@ -338,8 +338,9 @@ function handleRoomUpdate(room){
     const me=state.playerNum;
     const myPick=me===1?room.p1_pick:room.p2_pick;
     const oppPick=me===1?room.p2_pick:room.p1_pick;
-    if(myPick!==null&&oppPick!==null){resolveRound(room);}
-    else{render();}
+    if(myPick!==null&&oppPick!==null){resolveRound(room);return;}
+    // Only opponent's state changed — do soft render to avoid timer flicker
+    softRender();
     return;
   }
   if(room.status==='finished'){clearTimer();stopRevealTimer();setState('result');}
@@ -617,7 +618,7 @@ function updateTimerBar(){
 // Reveal ability
 function openRevealModal(){
   const room=state.roomData;const me=state.playerNum;
-  const hist=(room.history||[]).slice(0,5);
+  const hist=room.history||[];
   const body=document.getElementById('reveal-modal-body');
   body.innerHTML=`
     <p style="font-size:13px;color:var(--ink);margin-bottom:.3rem">見たいラウンドを選んでください</p>
@@ -657,10 +658,21 @@ function setState(s){
   if(s==='game'||s==='lobby')stopPolling();
   state.screen=s;render();
 }
+// softRender: re-render game screen but preserve timer DOM value to avoid flicker
+function softRender(){
+  if(state.screen!=='game')return render();
+  const app=document.getElementById('app');
+  const room=state.roomData;
+  if(room&&room.status==='reveal'){app.innerHTML=renderRevealPhase();if(!revealTimerInterval)startRevealTimer();return;}
+  const savedLeft=state.timerLeft;
+  const wasRunning=!!state.timerInterval;
+  app.innerHTML=renderGame();
+  if(wasRunning&&savedLeft!==null){state.timerLeft=savedLeft;updateTimerBar();}
+  // Don't call initGameScreen here to avoid restarting timer
+}
 function render(){
   const app=document.getElementById('app');
   const room=state.roomData;
-  // Check if we should show reveal phase
   if(state.screen==='game'&&room&&room.status==='reveal'){
     app.innerHTML=renderRevealPhase();
     if(!revealTimerInterval)startRevealTimer();
@@ -669,18 +681,14 @@ function render(){
   switch(state.screen){
     case 'lobby':   app.innerHTML=renderLobby();break;
     case 'waiting': app.innerHTML=renderWaiting();break;
-    case 'game':
-      // If timer is running, preserve it across renders by restoring timerLeft after DOM rebuild
+    case 'game':{
       const savedLeft=state.timerLeft;
       const wasRunning=!!state.timerInterval;
       app.innerHTML=renderGame();
-      if(wasRunning){
-        // Restore timerLeft so bar shows correct value
-        state.timerLeft=savedLeft;
-        updateTimerBar();
-      }
+      if(wasRunning&&savedLeft!==null){state.timerLeft=savedLeft;updateTimerBar();}
       initGameScreen();
       break;
+    }
     case 'result':  app.innerHTML=renderResult();break;
   }
 }
@@ -701,7 +709,7 @@ function renderRevealPhase(){
   const oppName=me===1?room.player2_name:room.player1_name;
   const myDone=me===1?room.p1_reveal_done:room.p2_reveal_done;
   const myUsed=me===1?room.p1_reveal_used:room.p2_reveal_used;
-  const hist=(room.history||[]).slice(0,5);
+  const hist=room.history||[];
   const limit=room.opt_timelimit||0;
   const timerHtml=limit>0?`<div class="timer-wrap">
     <div class="timer-bar-bg"><div class="timer-bar" id="reveal-timer-bar" style="width:100%"></div></div>
@@ -854,7 +862,7 @@ function renderGame(){
   }
 
   // History
-  const histRows=hist.slice().reverse().slice(0,5).map(h=>{
+  const histRows=hist.slice().reverse().map(h=>{
     const iWon=(me===1&&h.winner==='p1')||(me===2&&h.winner==='p2');
     const isDraw=h.winner==='draw';
     const resCls=isDraw?'draw':iWon?'win':'lose';
