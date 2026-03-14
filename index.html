@@ -667,7 +667,11 @@ function softRender(){
   const savedLeft=state.timerLeft;
   const wasRunning=!!state.timerInterval;
   app.innerHTML=renderGame();
-  if(wasRunning&&savedLeft!==null){state.timerLeft=savedLeft;updateTimerBar();}
+  if(wasRunning&&savedLeft!==null){
+    state.timerLeft=savedLeft;
+    // Use requestAnimationFrame to update after DOM paint to avoid flicker
+    requestAnimationFrame(()=>updateTimerBar());
+  }
   // Don't call initGameScreen here to avoid restarting timer
 }
 function render(){
@@ -985,6 +989,7 @@ function renderResult(){
   const myName=me===1?room.player1_name:room.player2_name;
   const oppName=me===1?room.player2_name:room.player1_name;
   const iWin=myScore>oppScore;
+  const isDraw2=myScore===oppScore;
   const hist=room.history||[];
   const revHist=room.reveal_history||[];
   const histRows=hist.map(h=>{
@@ -1005,8 +1010,8 @@ function renderResult(){
     </tr>`;
   }).join('');
   return`<div class="screen"><div class="final">
-    <div class="final-title ${iWin?'final-win':'final-lose'}">${iWin?'勝　利':'敗　北'}</div>
-    <div class="final-sub">${iWin?'見事な読み合いでした':'また挑戦してください'}</div>
+    <div class="final-title ${isDraw2?'':''}${iWin?'final-win':isDraw2?'':'final-lose'}">${iWin?'勝　利':isDraw2?'引き分け':'敗　北'}</div>
+    <div class="final-sub">${iWin?'見事な読み合いでした':isDraw2?'互角の勝負でした':'また挑戦してください'}</div>
     <div class="final-scores">
       <div class="final-score-item"><div class="label">${myName||'あなた'}</div><div class="val">${myScore}</div></div>
       <div style="align-self:center;color:var(--border);font-size:20px">－</div>
