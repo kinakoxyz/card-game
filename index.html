@@ -2,215 +2,723 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ゲーム内時計（通知版）</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>数心乱戦 — オンラインカードゲーム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Zen+Old+Mincho:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.js">
+function openRuleModal(){
+  document.getElementById('rule-modal').style.display='block';
+  document.body.style.overflow='hidden';
+}
+function closeRuleModal(){
+  document.getElementById('rule-modal').style.display='none';
+  document.body.style.overflow='';
+}
+function closeRule(e){
+  if(e.target.classList.contains('modal-overlay'))closeRuleModal();
+}
+</script>
 <style>
-:root{--bg:#0f1724;--card:#0b1220;--accent:#60a5fa;--muted:#9ca3af}
-html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Hiragino Kaku Gothic ProN",Meiryo, sans-serif;background:linear-gradient(180deg,#071024 0%,#071428 100%);color:#e6eef8}
-.wrap{max-width:860px;margin:36px auto;padding:24px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:12px;box-shadow:0 6px 30px rgba(2,6,23,0.7)}
-h1{margin:0 0 8px 0;font-size:20px}
-.row{display:flex;gap:18px;align-items:center}
-.card{background:var(--card);padding:14px;border-radius:10px;flex:1;min-width:0}
-.big{font-size:36px;font-weight:700}
-.small{color:var(--muted);font-size:13px}
-.pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(255,255,255,0.03);font-size:13px}
-label{font-size:13px;color:var(--muted);display:block;margin-bottom:6px}
-input[type="time"]{margin-right:8px}
-button{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:6px 12px;font-size:13px;cursor:pointer}
-.notice{margin-top:12px;color:var(--muted);font-size:13px}
-.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:12px}
-.legend span{font-size:13px;color:var(--muted)}
-table{width:100%;border-collapse:collapse;margin-top:12px}
-th,td{border:1px solid #333;padding:6px;text-align:left;font-size:13px}
-.checkbox{width:16px;height:16px}
-#dayPeriod{font-weight:bold;margin-top:8px;font-size:24px;}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1208;--washi:#f5f0e8;--light-washi:#faf7f2;
+  --vermillion:#b5291e;--cobalt:#1a3a6b;--gold:#9a7020;
+  --muted:#7a6848;--border:#d4c9a8;--surface:#f0ebe0;
+  --green:#1a6b3a;--red-bg:#fde8e8;--blue-bg:#e8eef8;
+}
+html,body{height:100%;background:var(--washi);color:var(--ink);font-family:'Noto Serif JP',serif}
+
+/* ─── Layout ─── */
+#app{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem}
+.screen{width:100%;max-width:520px;animation:fadeIn .4s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ─── Header ─── */
+.game-title{font-family:'Zen Old Mincho',serif;font-size:36px;letter-spacing:6px;text-align:center;line-height:1.1}
+.game-sub{font-size:12px;color:var(--muted);letter-spacing:3px;text-align:center;margin-top:4px;margin-bottom:2rem}
+.divider{width:80px;height:1px;background:var(--gold);margin:1rem auto}
+
+/* ─── Panels ─── */
+.panel{background:var(--light-washi);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1rem}
+.panel-title{font-size:12px;color:var(--gold);letter-spacing:2px;border-left:3px solid var(--gold);padding-left:8px;margin-bottom:1rem}
+
+/* ─── Inputs & Buttons ─── */
+input[type=text]{width:100%;padding:10px 14px;border:1px solid var(--border);border-radius:8px;font-family:'Noto Serif JP',serif;font-size:14px;background:var(--washi);color:var(--ink);outline:none;transition:border .2s}
+input[type=text]:focus{border-color:var(--gold)}
+.btn{display:block;width:100%;padding:12px;border:1.5px solid var(--ink);border-radius:8px;font-family:'Zen Old Mincho',serif;font-size:14px;letter-spacing:2px;cursor:pointer;transition:all .2s;text-align:center}
+.btn-primary{background:var(--ink);color:var(--washi)}
+.btn-primary:hover{background:#2e2010}
+.btn-secondary{background:transparent;color:var(--ink)}
+.btn-secondary:hover{background:var(--surface)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-sm{padding:7px 16px;width:auto;font-size:13px;display:inline-block;border-radius:6px}
+.gap{margin-top:.6rem}
+
+/* ─── Config box ─── */
+.config-row{margin-bottom:.8rem}
+.config-row label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;letter-spacing:1px}
+
+/* ─── Room ID display ─── */
+.room-box{background:var(--surface);border:1.5px dashed var(--gold);border-radius:8px;padding:1rem;text-align:center;margin-bottom:1rem}
+.room-id{font-family:'Zen Old Mincho',serif;font-size:28px;letter-spacing:8px;color:var(--ink)}
+.room-hint{font-size:12px;color:var(--muted);margin-top:4px}
+.copy-btn{margin-top:.6rem;padding:6px 18px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--washi);cursor:pointer;font-family:'Noto Serif JP',serif;letter-spacing:1px;transition:all .2s}
+.copy-btn:hover{background:var(--surface)}
+.waiting-anim{display:flex;gap:6px;justify-content:center;margin-top:.6rem}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--gold);animation:pulse 1.4s ease infinite}
+.dot:nth-child(2){animation-delay:.2s}.dot:nth-child(3){animation-delay:.4s}
+@keyframes pulse{0%,80%,100%{transform:scale(0);opacity:.3}40%{transform:scale(1);opacity:1}}
+
+/* ─── Game Board ─── */
+.score-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface);border-radius:8px;margin-bottom:1rem;border:1px solid var(--border)}
+.score-side{text-align:center;min-width:80px}
+.score-name{font-size:11px;color:var(--muted);letter-spacing:1px}
+.score-num{font-family:'Zen Old Mincho',serif;font-size:28px;line-height:1}
+.score-wins{font-size:11px;color:var(--muted);margin-top:2px}
+.score-divider{font-size:11px;color:var(--border);letter-spacing:1px}
+.round-badge{text-align:center;font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:.8rem}
+
+/* ─── Opponent info ─── */
+.opp-info{display:flex;gap:8px;justify-content:center;margin-bottom:1rem}
+.color-pill{padding:5px 14px;border-radius:20px;font-size:13px;font-weight:700;letter-spacing:1px}
+.pill-red{background:var(--red-bg);color:var(--vermillion);border:1px solid var(--vermillion)}
+.pill-blue{background:var(--blue-bg);color:var(--cobalt);border:1px solid var(--cobalt)}
+
+/* ─── Hand cards ─── */
+.hand-label{font-size:11px;color:var(--muted);letter-spacing:2px;text-align:center;margin-bottom:.6rem}
+.hand{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:1rem}
+.card{width:56px;height:80px;border-radius:8px;border:2px solid var(--border);display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;background:var(--washi);position:relative;user-select:none}
+.card.red{border-color:var(--vermillion);color:var(--vermillion)}
+.card.blue{border-color:var(--cobalt);color:var(--cobalt)}
+.card .num{font-family:'Zen Old Mincho',serif;font-size:24px;font-weight:700;line-height:1}
+.card .dot{font-size:9px;margin-top:2px;opacity:.7}
+.card:hover:not(.disabled):not(.selected){transform:translateY(-6px);box-shadow:0 8px 20px rgba(0,0,0,.12)}
+.card.selected{transform:translateY(-10px) scale(1.05);box-shadow:0 10px 24px rgba(0,0,0,.18)}
+.card.selected.red{background:var(--red-bg);border-width:2.5px}
+.card.selected.blue{background:var(--blue-bg);border-width:2.5px}
+.card.disabled{opacity:.35;cursor:not-allowed;transform:none!important}
+.card.used{opacity:.2;pointer-events:none}
+
+/* ─── Confirm area ─── */
+.confirm-area{text-align:center;min-height:60px;margin-bottom:.8rem}
+.selected-preview{font-size:13px;color:var(--muted);margin-bottom:.6rem;letter-spacing:1px}
+.waiting-msg{font-size:13px;color:var(--gold);letter-spacing:1px;margin-top:.4rem}
+
+/* ─── Result banner ─── */
+.result-banner{padding:1rem;border-radius:10px;text-align:center;margin-bottom:1rem;animation:fadeIn .3s ease}
+.result-win{background:#e8f5ec;border:1.5px solid var(--green);color:var(--green)}
+.result-lose{background:var(--red-bg);border:1.5px solid var(--vermillion);color:var(--vermillion)}
+.result-draw{background:var(--surface);border:1.5px solid var(--border);color:var(--muted)}
+.result-main{font-family:'Zen Old Mincho',serif;font-size:28px;letter-spacing:4px}
+.result-detail{font-size:12px;margin-top:4px;opacity:.8}
+
+/* ─── Final result ─── */
+.final{text-align:center;padding:2rem 1rem}
+.final-title{font-family:'Zen Old Mincho',serif;font-size:40px;letter-spacing:6px;margin-bottom:.5rem}
+.final-win{color:var(--gold)}.final-lose{color:var(--vermillion)}
+.final-sub{font-size:13px;color:var(--muted);letter-spacing:2px;margin-bottom:2rem}
+.final-scores{display:flex;gap:1.5rem;justify-content:center;margin-bottom:1.5rem}
+.final-score-item{text-align:center}
+.final-score-item .label{font-size:11px;color:var(--muted);letter-spacing:1px}
+.final-score-item .val{font-family:'Zen Old Mincho',serif;font-size:36px}
+
+/* ─── Setup notice ─── */
+.notice{background:#fef9ec;border:1px solid #e8c84a;border-radius:8px;padding:1rem;font-size:12px;color:#7a6020;line-height:1.8;margin-bottom:1rem}
+.notice strong{color:#5a4010}
+.notice code{background:#f5eecc;padding:1px 5px;border-radius:3px;font-size:11px}
+
+/* ─── Toast ─── */
+#toast{position:fixed;bottom:2rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--washi);padding:10px 20px;border-radius:8px;font-size:13px;opacity:0;transition:all .3s;pointer-events:none;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ─── History log ─── */
+.log{max-height:90px;overflow-y:auto;margin-bottom:.8rem}
+.log-row{display:flex;justify-content:space-between;align-items:center;padding:3px 8px;font-size:11px;border-radius:4px;margin-bottom:2px}
+.log-row:nth-child(odd){background:var(--surface)}
+.log-round{color:var(--muted)}.log-res.win{color:var(--green)}.log-res.lose{color:var(--vermillion)}.log-res.draw{color:var(--muted)}
+
+/* ─── Rule modal ─── */
+.modal-overlay{position:fixed;inset:0;background:rgba(26,18,8,.6);z-index:1000;display:flex;align-items:center;justify-content:center;padding:1rem;animation:fadeIn .2s ease}
+.modal{background:var(--washi);border-radius:14px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;border:1px solid var(--border)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:.7rem 1.25rem;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--washi);z-index:1}
+.modal-title{font-family:'Zen Old Mincho',serif;font-size:18px;letter-spacing:4px}
+.modal-close{width:28px;height:28px;border-radius:50%;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:all .2s}
+.modal-close:hover{background:var(--surface)}
+.modal-body{padding:1rem 1.25rem;display:grid;grid-template-columns:1fr 1fr;gap:.8rem 1.5rem}
+.modal-body .rule-section:nth-child(5){grid-column:1/-1}
+.rule-section{margin-bottom:0}
+.rule-section-title{font-size:10px;color:var(--gold);letter-spacing:2px;border-left:3px solid var(--gold);padding-left:8px;margin-bottom:.5rem}
+.rule-text{font-size:12px;line-height:1.8;color:var(--ink)}
+.rule-example{display:flex;align-items:center;gap:6px;margin:.3rem 0}
+.rule-card{width:32px;height:46px;border-radius:5px;border:2px solid;display:flex;align-items:center;justify-content:center;font-family:'Zen Old Mincho',serif;font-size:16px;font-weight:700}
+.rule-card.red{border-color:var(--vermillion);color:var(--vermillion);background:var(--red-bg)}
+.rule-card.blue{border-color:var(--cobalt);color:var(--cobalt);background:var(--blue-bg)}
+.rule-vs{font-size:10px;color:var(--muted)}
+.rule-result{font-size:11px;padding:2px 8px;border-radius:4px}
+.rule-result.win{background:#e8f5ec;color:var(--green);border:1px solid var(--green)}
+.rule-result.draw{background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+.rule-flow{display:flex;flex-direction:column;gap:4px}
+.rule-step{display:flex;gap:8px;align-items:flex-start}
+.rule-step-num{width:20px;height:20px;border-radius:50%;background:var(--ink);color:var(--washi);font-size:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.rule-step-text{font-size:12px;line-height:1.6}
+.card-table{width:100%;border-collapse:collapse;font-size:11px;margin-top:.3rem}
+.card-table td{padding:3px 6px;border:1px solid var(--border)}
+.card-table tr:nth-child(even){background:var(--surface)}
+.rule-btn{display:inline-block;padding:6px 16px;border:1px solid var(--border);border-radius:6px;background:transparent;cursor:pointer;font-family:'Noto Serif JP',serif;font-size:12px;color:var(--muted);letter-spacing:1px;transition:all .2s}
+.rule-btn:hover{background:var(--surface);color:var(--ink)}
 </style>
 </head>
 <body>
-<div class="wrap">
-<h1>ゲーム内時計（通知版）</h1>
-
-<div class="row" style="margin-top:12px;">
-  <div class="card">
-    <div class="small">現実時間（ローカル）</div>
-    <div id="realTime" class="big mono">--:--:--</div>
-    <div class="small">現在の分は <span id="realMinute">--</span> 分、サイクル内経過 <span id="cycleSec">--</span> 秒</div>
+<div id="app"></div>
+<div id="toast"></div>
+<div id="rule-modal" style="display:none">
+<div class="modal-overlay" onclick="closeRule(event)">
+<div class="modal" onclick="event.stopPropagation()">
+  <div class="modal-header">
+    <div class="modal-title">ルール</div>
+    <button class="modal-close" onclick="closeRuleModal()">✕</button>
   </div>
-  <div class="card">
-    <div class="small">ゲーム内時間</div>
-    <div id="gameTime" class="big mono">--:--</div>
-    <div id="dayPeriod"></div>
-  </div>
-</div>
-
-<div style="display:flex;gap:12px;margin-top:14px;align-items:flex-start;">
-  <div class="card" style="flex:0 0 320px;">
-    <label>任意の現実時間でシミュレートする（オフで現在時刻）</label>
-    <input id="timeInput" type="time">
-    <button id="resetBtn">リセット</button>
-    <div class="notice">チェックした魚・渦だけ通知されます。「リセット」で現在のローカル時刻に戻ります。</div>
-  </div>
-
-  <div class="card" style="flex:1;">
-    <div class="small">ルール（固定）</div>
-    <div class="pill">ゲーム内1時間 = 現実 1分15秒 (75秒)</div>
-    <div class="pill" style="margin-left:8px;">現実 30分 = ゲーム 24時間</div>
-    <div class="legend">
-      <span>※ 昼はゲーム内07:00～18:59、夜はそれ以外</span>
+  <div class="modal-body">
+    <div class="rule-section">
+      <div class="rule-section-title">基本情報</div>
+      <table class="card-table">
+        <tr><td style="color:var(--muted)">プレイ人数</td><td>2人</td></tr>
+        <tr><td style="color:var(--muted)">手札</td><td>1〜9のカード各1枚（計9枚）</td></tr>
+        <tr><td style="color:var(--muted)">勝利条件</td><td>先に5勝したプレイヤーの勝ち</td></tr>
+      </table>
+    </div>
+    <div class="rule-section">
+      <div class="rule-section-title">カードの色</div>
+      <p class="rule-text">奇数（1,3,5,7,9）＝ 赤カード<br>偶数（2,4,6,8）＝ 青カード<br>相手には<strong>色の残り枚数だけ</strong>が見えます。数字は非公開です。</p>
+    </div>
+    <div class="rule-section">
+      <div class="rule-section-title">勝敗ルール</div>
+      <p class="rule-text" style="margin-bottom:.5rem">基本：数字が大きい方が勝ち</p>
+      <div class="rule-example">
+        <div class="rule-card blue">8</div>
+        <span class="rule-vs">vs</span>
+        <div class="rule-card red">5</div>
+        <div class="rule-result win">8の勝ち</div>
+      </div>
+      <p class="rule-text" style="margin:.6rem 0 .5rem">特別ルール：1は9に勝つ</p>
+      <div class="rule-example">
+        <div class="rule-card red">1</div>
+        <span class="rule-vs">vs</span>
+        <div class="rule-card red">9</div>
+        <div class="rule-result win">1の勝ち</div>
+      </div>
+      <p class="rule-text" style="margin:.6rem 0 .5rem">同じ数字は引き分け（勝利数は増えない）</p>
+      <div class="rule-example">
+        <div class="rule-card blue">4</div>
+        <span class="rule-vs">vs</span>
+        <div class="rule-card blue">4</div>
+        <div class="rule-result draw">DRAW</div>
+      </div>
+    </div>
+    <div class="rule-section">
+      <div class="rule-section-title">ゲームの流れ</div>
+      <div class="rule-flow">
+        <div class="rule-step"><div class="rule-step-num">1</div><div class="rule-step-text">手札からカードを1枚選ぶ</div></div>
+        <div class="rule-step"><div class="rule-step-num">2</div><div class="rule-step-text">お互い裏向きで同時に出す</div></div>
+        <div class="rule-step"><div class="rule-step-num">3</div><div class="rule-step-text">勝敗判定（WIN / LOSE / DRAW）</div></div>
+        <div class="rule-step"><div class="rule-step-num">4</div><div class="rule-step-text">出したカードの数字は非公開のまま</div></div>
+      </div>
+    </div>
+    <div class="rule-section">
+      <div class="rule-section-title">戦略のヒント</div>
+      <p class="rule-text">相手の色の残り枚数と過去の勝敗から、相手の手を推理しましょう。1は最弱ですが、9だけに勝てる唯一のカードです。</p>
     </div>
   </div>
 </div>
-
-<h2>魚リスト</h2>
-<table id="fishTable">
-  <thead><tr><th>通知</th><th>名前</th><th>場所</th><th>時間</th><th>サイズ</th></tr></thead>
-  <tbody></tbody>
-</table>
-
-<h2>渦リスト</h2>
-<table id="whirlTable">
-  <thead><tr><th>通知</th><th>名前</th><th>発生パターン</th></tr></thead>
-  <tbody></tbody>
-</table>
-
-<audio id="pingSound" src="ping.mp3" preload="auto"></audio>
-
-<footer>
-表示はローカル端末の時刻を利用しています。ブラウザで開いてそのまま使えます。
-</footer>
+</div>
 </div>
 
 <script>
-// -------------------- データ --------------------
-const fishData = [
-{"name":"アマゾンカワイルカ","category":"一般魚","ranges":[["12:00","14:00"]],"location":"ファッションモール、サンリオホテル","size":"超特大"},
-{"name":"マッコウクジラ","category":"一般魚","ranges":[["00:00","04:00"]],"location":"ボート/ブルーホール","size":"超特大"},
-{"name":"シロナガスクジラ","category":"一般魚","ranges":[["09:00","14:00"]],"location":"灯台","size":"超特大"},
-{"name":"ジンベエザメ","category":"一般魚","ranges":[["00:00","04:00"]],"location":"ボート","size":"超特大"},
-{"name":"ジュゴン","category":"一般魚","ranges":[["12:00","15:00"]],"location":"ファッションモール","size":"特大"},
-{"name":"タテゴトアザラシ","category":"一般魚","ranges":[["11:00","15:00"],["00:00","04:00"]],"location":"灯台/ブルーホール","size":"特大"},
-{"name":"ニシオンデンザメ","category":"一般魚","ranges":[["00:00","04:00"]],"location":"ブルーホール","size":"超特大"},
-{"name":"白いシロナガスクジラ","category":"巨大魚","ranges":[["10:00","14:00"]],"location":"灯台","size":"超特大"},
-{"name":"白いザトウクジラ","category":"巨大魚","ranges":[["11:30","12:00"]],"location":"ビーチリゾートの遠い海だけ？","size":"巨大魚"},
-{"name":"白いマッコウクジラ","category":"巨大魚","ranges":[["11:30","12:00"]],"location":"ビーチリゾートの遠い海だけ？","size":"巨大魚"},
-{"name":"ミニピンクイルカ","category":"ミニ","ranges":[["12:00","14:00"]],"location":"ファッションモール、サンリオホテル","size":"小"},
-{"name":"ミニマッコウクジラ","category":"ミニ","ranges":[["00:00","04:00"]],"location":"ボート","size":"小"},
-{"name":"ミニシロナガスクジラ","category":"ミニ","ranges":[["09:00","12:00"]],"location":"灯台","size":"小"},
-{"name":"たい焼きアイスクリーム","category":"特殊","ranges":[["00:00","05:59"],["12:00","13:59"]],"location":"キャンプ場の湖/滝","size":"大"}
-];
+// ══════════════════════════════════════════════
+// CONFIG — ここにSupabaseの情報を入力してください
+// ══════════════════════════════════════════════
+let SUPABASE_URL = 'https://csrvewlgyvxjiyazvpdl.supabase.co';
+let SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNzcnZld2xneXZ4aml5YXp2cGRsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0MjU5MTMsImV4cCI6MjA4OTAwMTkxM30.lJDAS_bQlWyHPDaIR550Y9qPlsNSPVcjCEZJqChDGT8';
+let sbClient = null;
 
-const whirlData = [
-{"name":"マカジキ"},
-{"name":"パターン1"},
-{"name":"パターン2"},
-{"name":"パターン3"}
-];
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+let state = {
+  screen: 'config',  // config | lobby | waiting | game | result
+  myId: null,
+  playerNum: null,   // 1 or 2
+  roomId: null,
+  roomData: null,
+  selectedCard: null,
+  submitting: false,
+  playerName: '',
+  channel: null,
+};
 
-// -------------------- 時計 & 昼夜 --------------------
-const elReal = document.getElementById('realTime');
-const elGame = document.getElementById('gameTime');
-const elRealMinute = document.getElementById('realMinute');
-const elCycleSec = document.getElementById('cycleSec');
-const timeInput = document.getElementById('timeInput');
-const resetBtn = document.getElementById('resetBtn');
-const elDayPeriod = document.getElementById('dayPeriod');
-const ping = document.getElementById('pingSound');
+// ══════════════════════════════════════════════
+// UTILS
+// ══════════════════════════════════════════════
+function genId(len=6){
+  return Math.random().toString(36).slice(2,2+len).toUpperCase();
+}
+function toast(msg,dur=2000){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),dur);
+}
+function calcWinner(p1,p2){
+  if(p1===p2)return 'draw';
+  if((p1===1&&p2===9)||(p2===1&&p1===9))return p1===1?'p1':'p2';
+  return p1>p2?'p1':'p2';
+}
+function getHand(cards){
+  return [1,2,3,4,5,6,7,8,9].filter(n=>cards.includes(n));
+}
+function colorOf(n){return n%2===1?'red':'blue';}
 
-let simulate=false;
-let notified=[];
-
-const REAL_CYCLE_SECONDS=30*60;
-const GAME_SECONDS_PER_REAL_SECOND=(24*3600)/REAL_CYCLE_SECONDS;
-
-function z(n,d=2){return String(n).padStart(d,'0');}
-
-function mapRealToGame(realDate){
-  const minutes=realDate.getMinutes();
-  const seconds=realDate.getSeconds();
-  const ms=realDate.getMilliseconds();
-  const secondsFromHour=minutes*60+seconds+ms/1000;
-  const cycleSeconds=secondsFromHour%REAL_CYCLE_SECONDS;
-  const gameTotalSeconds=cycleSeconds*GAME_SECONDS_PER_REAL_SECOND;
-  const gameH=Math.floor(gameTotalSeconds/3600)%24;
-  const gameM=Math.floor((gameTotalSeconds%3600)/60);
-  return {gameH,gameM,cycleSeconds};
+// ══════════════════════════════════════════════
+// SUPABASE HELPERS
+// ══════════════════════════════════════════════
+async function getRoom(roomId){
+  const {data,error}=await sbClient.from('game_rooms').select('*').eq('room_id',roomId).single();
+  if(error)return null;
+  return data;
+}
+async function updateRoom(roomId,updates){
+  const {error}=await sbClient.from('game_rooms').update(updates).eq('room_id',roomId);
+  return !error;
 }
 
-function formatGame(g){return `${z(g.gameH)}:${z(g.gameM)}`;}
-
-function updateDayPeriod(gameH,cycleSec){
-  const dayStart1=8*60+45;
-  const dayEnd1=23*60+44;
-  const dayStart2=dayStart1+30*60;
-  const dayEnd2=dayEnd1+30*60;
-  let period='夜';
-  if((cycleSec>=dayStart1 && cycleSec<=dayEnd1)||(cycleSec>=dayStart2 && cycleSec<=dayEnd2)){
-    period='昼';
+// ══════════════════════════════════════════════
+// GAME LOGIC
+// ══════════════════════════════════════════════
+async function createRoom(name){
+  const roomId=genId();
+  const myId=genId(8);
+  const allCards=[1,2,3,4,5,6,7,8,9];
+  const {error}=await sbClient.from('game_rooms').insert({
+    room_id:roomId,
+    player1_id:myId,
+    player1_name:name,
+    player2_id:null,
+    player2_name:null,
+    p1_hand:allCards,
+    p2_hand:allCards,
+    p1_pick:null,
+    p2_pick:null,
+    score_p1:0,
+    score_p2:0,
+    round:1,
+    status:'waiting',
+    history:[],
+  });
+  if(error){toast('エラーが発生しました');console.error(error);return;}
+  state.myId=myId;state.roomId=roomId;state.playerNum=1;state.playerName=name;
+  setState('waiting');
+  subscribeRoom(roomId);
+}
+async function joinRoom(roomId,name){
+  const room=await getRoom(roomId);
+  if(!room){toast('ルームが見つかりません');return;}
+  if(room.status!=='waiting'){toast('このルームはすでに満員です');return;}
+  const myId=genId(8);
+  await updateRoom(roomId,{player2_id:myId,player2_name:name,status:'playing'});
+  state.myId=myId;state.roomId=roomId;state.playerNum=2;state.playerName=name;state.roomData=room;
+  setState('game');
+  subscribeRoom(roomId);
+}
+function subscribeRoom(roomId){
+  if(state.channel)state.channel.unsubscribe();
+  state.channel=sbClient.channel('room:'+roomId)
+    .on('postgres_changes',{event:'UPDATE',schema:'public',table:'game_rooms',filter:'room_id=eq.'+roomId},
+      payload=>{
+        state.roomData=payload.new;
+        handleRoomUpdate(payload.new);
+      })
+    .subscribe();
+}
+function handleRoomUpdate(room){
+  if(room.status==='playing'&&state.screen==='waiting'){
+    setState('game');return;
   }
-  elDayPeriod.textContent=`現在：${period}`;
-  elDayPeriod.style.color=(period==='昼')?'orange':'blue';
-}
-
-// -------------------- テーブル生成 --------------------
-function populateTables(){
-  const fishTable=document.getElementById('fishTable').getElementsByTagName('tbody')[0];
-  fishTable.innerHTML="";
-  fishData.forEach(f=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td><input type="checkbox" class="notifyCheckbox checkbox" checked></td>
-                  <td>${f.name}</td><td>${f.location}</td><td>${f.ranges.map(r=>r.join('〜')).join(' / ')}</td><td>${f.size}</td>`;
-    fishTable.appendChild(tr);
-  });
-  const whirlTable=document.getElementById('whirlTable').getElementsByTagName('tbody')[0];
-  whirlTable.innerHTML="";
-  whirlData.forEach(w=>{
-    const tr=document.createElement('tr');
-    tr.innerHTML=`<td><input type="checkbox" class="notifyCheckbox checkbox" checked></td>
-                  <td>${w.name}</td><td>発生時間パターンあり</td>`;
-    whirlTable.appendChild(tr);
-  });
-}
-
-// -------------------- 通知処理 --------------------
-function checkNotifications(now){
-  const hhmm=z(now.getHours())+":"+z(now.getMinutes());
-  const checkboxes=document.querySelectorAll('.notifyCheckbox');
-  const allData=[...fishData,...whirlData];
-  allData.forEach((item,i)=>{
-    const cb=checkboxes[i];
-    if(!cb.checked) return;
-    // 魚の範囲チェック
-    if(item.ranges){
-      item.ranges.forEach(r=>{
-        if(hhmm===r[0] && !notified.includes(item.name)){
-          ping.play();
-          notified.push(item.name);
-        }
-      });
+  if(state.screen==='game'){
+    const me=state.playerNum;
+    const myPick=me===1?room.p1_pick:room.p2_pick;
+    const oppPick=me===1?room.p2_pick:room.p1_pick;
+    if(myPick!==null&&oppPick!==null){
+      // both submitted — resolve
+      resolveRound(room);
+    } else {
+      render();
     }
+  }
+  if(room.status==='finished'){
+    setState('result');
+  }
+}
+async function submitCard(card){
+  if(state.submitting)return;
+  state.submitting=true;state.selectedCard=null;
+  const field=state.playerNum===1?'p1_pick':'p2_pick';
+  await updateRoom(state.roomId,{[field]:card});
+  state.submitting=false;
+  render();
+}
+async function resolveRound(room){
+  const p1=room.p1_pick,p2=room.p2_pick;
+  const winner=calcWinner(p1,p2);
+  let s1=room.score_p1,s2=room.score_p2;
+  if(winner==='p1')s1++;
+  else if(winner==='p2')s2++;
+  const newP1Hand=room.p1_hand.filter(c=>c!==p1);
+  const newP2Hand=room.p2_hand.filter(c=>c!==p2);
+  const histEntry={round:room.round,p1,p2,winner};
+  const newHist=[...(room.history||[]),histEntry];
+  const finished=s1>=5||s2>=5||newP1Hand.length===0;
+  const updates={
+    p1_hand:newP1Hand,p2_hand:newP2Hand,
+    score_p1:s1,score_p2:s2,
+    p1_pick:null,p2_pick:null,
+    round:room.round+1,
+    history:newHist,
+    status:finished?'finished':'playing',
+    last_result:{p1,p2,winner},
+  };
+  // Only player1 writes the resolution (prevent double-write)
+  if(state.playerNum===1){
+    await updateRoom(state.roomId,updates);
+  }
+}
+async function rematch(){
+  const allCards=[1,2,3,4,5,6,7,8,9];
+  const updates={p1_hand:allCards,p2_hand:allCards,p1_pick:null,p2_pick:null,
+    score_p1:0,score_p2:0,round:1,status:'playing',history:[],last_result:null};
+  await updateRoom(state.roomId,updates);
+  state.screen='game';render();
+}
+
+// ══════════════════════════════════════════════
+// SCREENS
+// ══════════════════════════════════════════════
+function setState(s){state.screen=s;render();}
+function render(){
+  const app=document.getElementById('app');
+  switch(state.screen){
+    case 'config':    app.innerHTML=renderConfig();break;
+    case 'lobby':     app.innerHTML=renderLobby();break;
+    case 'waiting':   app.innerHTML=renderWaiting();break;
+    case 'game':      app.innerHTML=renderGame();break;
+    case 'result':    app.innerHTML=renderResult();break;
+  }
+}
+
+function renderConfig(){
+  return`<div class="screen">
+  <div class="game-title">数心乱戦</div>
+  <div class="game-sub">— 情報制限カードゲーム —</div>
+  <div class="notice">
+    <strong>初回セットアップが必要です</strong><br>
+    1. <a href="https://supabase.com" target="_blank">supabase.com</a> で無料プロジェクトを作成<br>
+    2. SQL Editorで下のテーブルを作成<br>
+    3. Project Settings → API から URL と anon key を取得して入力
+    <br><br>
+    <strong>SQL（コピーして実行）：</strong>
+    <br>
+    <code>create table game_rooms (
+  id bigint generated always as identity primary key,
+  room_id text unique not null,
+  player1_id text, player2_id text,
+  player1_name text, player2_name text,
+  p1_hand int[], p2_hand int[],
+  p1_pick int, p2_pick int,
+  score_p1 int default 0, score_p2 int default 0,
+  round int default 1,
+  status text default 'waiting',
+  history jsonb default '[]',
+  last_result jsonb,
+  created_at timestamptz default now()
+);
+alter table game_rooms enable row level security;
+create policy "allow all" on game_rooms for all using (true) with check (true);
+alter publication supabase_realtime add table game_rooms;</code>
+  </div>
+  <div class="panel">
+    <div class="panel-title">Supabase 設定</div>
+    <div class="config-row"><label>Project URL</label>
+    <input type="text" id="sb-url" placeholder="https://xxxx.supabase.co" value="${SUPABASE_URL}"></div>
+    <div class="config-row"><label>Anon Key</label>
+    <input type="text" id="sb-key" placeholder="eyJhbGci..." value="${SUPABASE_KEY}"></div>
+    <button class="btn btn-primary gap" onclick="saveConfig()">設定を保存して続ける</button>
+  </div>
+</div>`;
+}
+
+function renderLobby(){
+  return`<div class="screen">
+  <div class="game-title">数心乱戦</div>
+  <div class="game-sub">— 情報制限カードゲーム —</div>
+  <div style="text-align:center;margin-bottom:1rem">
+    <button class="rule-btn" onclick="openRuleModal()">ルールを確認する</button>
+  </div>
+  <div class="panel">
+    <div class="panel-title">新規ルームを作成</div>
+    <div class="config-row"><label>あなたの名前</label>
+    <input type="text" id="name-create" placeholder="プレイヤー名" maxlength="12"></div>
+    <button class="btn btn-primary gap" onclick="handleCreate()">ルームを作成する</button>
+  </div>
+  <div class="panel">
+    <div class="panel-title">ルームに参加</div>
+    <div class="config-row"><label>あなたの名前</label>
+    <input type="text" id="name-join" placeholder="プレイヤー名" maxlength="12"></div>
+    <div class="config-row"><label>ルームID</label>
+    <input type="text" id="room-input" placeholder="XXXXXX" maxlength="6" style="text-transform:uppercase;letter-spacing:4px;font-size:18px;text-align:center;font-family:'Zen Old Mincho',serif"></div>
+    <button class="btn btn-secondary gap" onclick="handleJoin()">参加する</button>
+  </div>
+</div>`;
+}
+
+function renderWaiting(){
+  const url=location.href.split('?')[0]+'?room='+state.roomId;
+  return`<div class="screen">
+  <div class="game-title">数心乱戦</div>
+  <div class="game-sub">— 友達を待っています —</div>
+  <div class="room-box">
+    <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:.4rem">ルームID</div>
+    <div class="room-id">${state.roomId}</div>
+    <div class="room-hint">このIDを友達に教えてください</div>
+    <button class="copy-btn" onclick="copyUrl('${url}')">URLをコピー</button>
+  </div>
+  <div style="text-align:center;color:var(--muted);font-size:13px;letter-spacing:1px">相手の参加を待っています</div>
+  <div class="waiting-anim"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+</div>`;
+}
+
+function renderGame(){
+  const room=state.roomData;
+  if(!room)return'<div class="screen" style="text-align:center;padding:3rem;color:var(--muted)">読み込み中...</div>';
+  const me=state.playerNum;
+  const myHand=me===1?room.p1_hand:room.p2_hand;
+  const oppHand=me===1?room.p2_hand:room.p1_hand;
+  const myScore=me===1?room.score_p1:room.score_p2;
+  const oppScore=me===1?room.score_p2:room.score_p1;
+  const myName=me===1?room.player1_name:room.player2_name;
+  const oppName=me===1?room.player2_name:room.player1_name;
+  const myPick=me===1?room.p1_pick:room.p2_pick;
+  const oppPick=me===1?room.p2_pick:room.p1_pick;
+  const oppRed=(oppHand||[]).filter(n=>n%2===1).length;
+  const oppBlue=(oppHand||[]).filter(n=>n%2===0).length;
+  const hist=room.history||[];
+  const lastResult=room.last_result;
+
+  let resultHtml='';
+  if(lastResult&&hist.length>0){
+    const last=hist[hist.length-1];
+    const iWon=(me===1&&last.winner==='p1')||(me===2&&last.winner==='p2');
+    const isDraw=last.winner==='draw';
+    const cls=isDraw?'result-draw':iWon?'result-win':'result-lose';
+    const label=isDraw?'DRAW':iWon?'WIN':'LOSE';
+    resultHtml=`<div class="result-banner ${cls}">
+      <div class="result-main">${label}</div>
+      <div class="result-detail">第${last.round}回戦</div>
+    </div>`;
+  }
+
+  const histRows=hist.slice().reverse().slice(0,5).map(h=>{
+    const iWon=(me===1&&h.winner==='p1')||(me===2&&h.winner==='p2');
+    const isDraw=h.winner==='draw';
+    const resCls=isDraw?'draw':iWon?'win':'lose';
+    const resLabel=isDraw?'DRAW':iWon?'WIN':'LOSE';
+    return`<div class="log-row"><span class="log-round">第${h.round}回戦</span><span class="log-res ${resCls}">${resLabel}</span></div>`;
+  }).join('');
+
+  const cardItems=(myHand||[]).sort((a,b)=>a-b).map(n=>{
+    const cls=colorOf(n);
+    const isSel=state.selectedCard===n;
+    const isDisabled=myPick!==null||state.submitting;
+    return`<div class="card ${cls}${isSel?' selected':''}${isDisabled?' disabled':''}" onclick="selectCard(${n})">
+      <div class="num">${n}</div><div class="dot">●</div>
+    </div>`;
+  }).join('');
+
+  let confirmHtml='';
+  if(myPick===null){
+    if(state.selectedCard){
+      const c=colorOf(state.selectedCard);
+      confirmHtml=`<div class="selected-preview">選択中：<strong>${state.selectedCard}</strong> (${c==='red'?'赤':'青'})</div>
+      <button class="btn btn-primary btn-sm" onclick="submitCard(${state.selectedCard})">このカードを出す</button>`;
+    } else {
+      confirmHtml=`<div style="font-size:13px;color:var(--muted);letter-spacing:1px">カードを選んでください</div>`;
+    }
+  } else {
+    confirmHtml=`<div style="font-size:13px;color:var(--gold);letter-spacing:1px">カードを出しました</div>
+    <div class="waiting-msg">相手を待っています...</div>`;
+  }
+
+  return`<div class="screen">
+  <div class="score-bar">
+    <div class="score-side">
+      <div class="score-name">${myName||'あなた'}</div>
+      <div class="score-num">${myScore}</div>
+      <div class="score-wins">勝利数</div>
+    </div>
+    <div class="score-divider">VS</div>
+    <div class="score-side">
+      <div class="score-name">${oppName||'相手'}</div>
+      <div class="score-num">${oppScore}</div>
+      <div class="score-wins">勝利数</div>
+    </div>
+  </div>
+  <div class="round-badge" style="display:flex;align-items:center;justify-content:center;gap:10px">第 ${room.round} 回戦　/　先に5勝で勝利 <button class="rule-btn" onclick="openRuleModal()" style="font-size:11px;padding:3px 10px">ルール</button></div>
+  ${resultHtml}
+  <div class="panel" style="margin-bottom:.8rem">
+    <div class="panel-title">相手の残りカード</div>
+    <div class="opp-info">
+      <div class="color-pill pill-red">赤 ${oppRed}</div>
+      <div class="color-pill pill-blue">青 ${oppBlue}</div>
+    </div>
+  </div>
+  ${hist.length>0?`<div class="panel" style="margin-bottom:.8rem"><div class="panel-title">対戦履歴</div><div class="log">${histRows}</div></div>`:''}
+  <div class="panel">
+    <div class="panel-title">あなたの手札</div>
+    <div class="hand">${cardItems}</div>
+    <div class="confirm-area">${confirmHtml}</div>
+  </div>
+</div>`;
+}
+
+function renderResult(){
+  const room=state.roomData;
+  const me=state.playerNum;
+  const myScore=me===1?room.score_p1:room.score_p2;
+  const oppScore=me===1?room.score_p2:room.score_p1;
+  const myName=me===1?room.player1_name:room.player2_name;
+  const oppName=me===1?room.player2_name:room.player1_name;
+  const iWin=myScore>oppScore;
+  const hist=room.history||[];
+  const histRows=hist.map((h,i)=>{
+    const iWon=(me===1&&h.winner==='p1')||(me===2&&h.winner==='p2');
+    const isDraw=h.winner==='draw';
+    const resCls=isDraw?'draw':iWon?'win':'lose';
+    const resLabel=isDraw?'DRAW':iWon?'WIN':'LOSE';
+    const myCard=me===1?h.p1:h.p2;
+    const oppCard=me===1?h.p2:h.p1;
+    return`<tr>
+      <td style="color:var(--muted);text-align:center">第${h.round}回戦</td>
+      <td style="text-align:center;font-family:'Zen Old Mincho',serif;font-size:16px;color:${colorOf(myCard)==='red'?'var(--vermillion)':'var(--cobalt)'}">${myCard}</td>
+      <td style="text-align:center;font-size:11px;color:var(--muted)">vs</td>
+      <td style="text-align:center;font-family:'Zen Old Mincho',serif;font-size:16px;color:${colorOf(oppCard)==='red'?'var(--vermillion)':'var(--cobalt)'}">${oppCard}</td>
+      <td style="text-align:center"><span class="log-res ${resCls}" style="font-size:12px;font-weight:700">${resLabel}</span></td>
+    </tr>`;
+  }).join('');
+  return`<div class="screen">
+  <div class="final">
+    <div class="final-title ${iWin?'final-win':'final-lose'}">${iWin?'勝　利':'敗　北'}</div>
+    <div class="final-sub">${iWin?'見事な読み合いでした':'また挑戦してください'}</div>
+    <div class="final-scores">
+      <div class="final-score-item"><div class="label">${myName||'あなた'}</div><div class="val">${myScore}</div></div>
+      <div style="align-self:center;color:var(--border);font-size:20px">－</div>
+      <div class="final-score-item"><div class="label">${oppName||'相手'}</div><div class="val">${oppScore}</div></div>
+    </div>
+    ${hist.length>0?`<div class="panel" style="text-align:left;margin-bottom:1rem">
+      <div class="panel-title">対戦履歴</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead><tr>
+          <th style="padding:4px 8px;color:var(--muted);font-weight:400;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--border)">回戦</th>
+          <th style="padding:4px 8px;color:var(--muted);font-weight:400;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--border)">${myName||'あなた'}</th>
+          <th style="border-bottom:1px solid var(--border)"></th>
+          <th style="padding:4px 8px;color:var(--muted);font-weight:400;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--border)">${oppName||'相手'}</th>
+          <th style="padding:4px 8px;color:var(--muted);font-weight:400;font-size:10px;letter-spacing:1px;border-bottom:1px solid var(--border)">結果</th>
+        </tr></thead>
+        <tbody>${histRows}</tbody>
+      </table>
+    </div>`:''}
+    <div style="display:flex;gap:.6rem;justify-content:center">
+      <button class="btn btn-primary btn-sm" onclick="rematch()">もう一度対戦</button>
+      <button class="btn btn-secondary btn-sm" onclick="setState('lobby')">ロビーに戻る</button>
+    </div>
+  </div>
+</div>`;
+}
+
+// ══════════════════════════════════════════════
+// HANDLERS
+// ══════════════════════════════════════════════
+function saveConfig(){
+  const url=document.getElementById('sb-url').value.trim();
+  const key=document.getElementById('sb-key').value.trim();
+  if(!url||!key){toast('URLとKeyを入力してください');return;}
+  SUPABASE_URL=url;SUPABASE_KEY=key;
+  try{
+    sbClient=window.supabase.createClient(url,key);
+    localStorage.setItem('sb_url',url);
+    localStorage.setItem('sb_key',key);
+    toast('接続しました！');
+    setState('lobby');
+  } catch(e){toast('設定が正しくありません');console.error(e);}
+}
+function handleCreate(){
+  const name=document.getElementById('name-create').value.trim()||'プレイヤー1';
+  createRoom(name);
+}
+function handleJoin(){
+  const name=document.getElementById('name-join').value.trim()||'プレイヤー2';
+  const rid=document.getElementById('room-input').value.trim().toUpperCase();
+  if(!rid||rid.length!==6){toast('ルームIDを入力してください');return;}
+  joinRoom(rid,name);
+}
+function selectCard(n){
+  if(state.roomData&&(state.playerNum===1?state.roomData.p1_pick:state.roomData.p2_pick)!==null)return;
+  state.selectedCard=state.selectedCard===n?null:n;
+  render();
+}
+function copyUrl(url){
+  navigator.clipboard.writeText(url).then(()=>toast('URLをコピーしました！')).catch(()=>{
+    const el=document.createElement('input');el.value=url;document.body.appendChild(el);
+    el.select();document.execCommand('copy');document.body.removeChild(el);
+    toast('URLをコピーしました！');
   });
 }
 
-// -------------------- tick --------------------
-function tick(){
-  let now=new Date();
-  if(simulate && timeInput.value){
-    const [hh,mm]=timeInput.value.split(':').map(Number);
-    now.setHours(hh,mm,0,0);
+// ══════════════════════════════════════════════
+// INIT — URLパラメータでルーム自動入力
+// ══════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  const params=new URLSearchParams(location.search);
+  const roomParam=params.get('room');
+  if(!window.supabase || !window.supabase.createClient){
+    document.getElementById('app').innerHTML='<div style="text-align:center;padding:3rem;font-family:serif;color:#b5291e">Supabaseライブラリの読み込みに失敗しました。<br>インターネット接続を確認してページを再読み込みしてください。</div>';
+    return;
   }
-  elReal.textContent=`${z(now.getHours())}:${z(now.getMinutes())}:${z(now.getSeconds())}`;
-  const res=mapRealToGame(now);
-  elGame.textContent=formatGame(res);
-  elRealMinute.textContent=now.getMinutes();
-  elCycleSec.textContent=Math.floor(res.cycleSeconds/1);
-  updateDayPeriod(res.gameH,res.cycleSec/1);
-  checkNotifications(now);
-}
+  const savedUrl=localStorage.getItem('sb_url')||SUPABASE_URL;
+  const savedKey=localStorage.getItem('sb_key')||SUPABASE_KEY;
+  if(savedUrl&&savedKey){
+    SUPABASE_URL=savedUrl;SUPABASE_KEY=savedKey;
+    sbClient=window.supabase.createClient(savedUrl,savedKey);
+    state.screen='lobby';
+  }
+  render();
+  // URLにルームIDがあればlobbyで自動入力
+  if(roomParam){
+    setTimeout(()=>{
+      const el=document.getElementById('room-input');
+      if(el)el.value=roomParam.toUpperCase();
+    },100);
+  }
+});
 
-timeInput.addEventListener('input',()=>{simulate=!!timeInput.value; tick();});
-resetBtn.addEventListener('click',()=>{simulate=false;timeInput.value=""; tick(); notified=[];});
-populateTables();
-tick();
-setInterval(tick,250);
+function openRuleModal(){
+  document.getElementById('rule-modal').style.display='block';
+  document.body.style.overflow='hidden';
+}
+function closeRuleModal(){
+  document.getElementById('rule-modal').style.display='none';
+  document.body.style.overflow='';
+}
+function closeRule(e){
+  if(e.target.classList.contains('modal-overlay'))closeRuleModal();
+}
 </script>
 </body>
 </html>
